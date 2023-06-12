@@ -1,0 +1,21 @@
+h1 {
+	border-top: double 4px #27acd9;
+	border-bottom: double 4px #27acd9;
+	padding: 0.5rem 0;
+	}
+
+h2 {
+	background: #27acd9;
+	padding: 1rem;
+	position: relative;
+	color: #fff;
+	}
+h2:before {
+    position: absolute;
+    content: '';
+    top: 100%;
+    left: 0;
+    border: none;
+    border-bottom: solid 10px transparent;
+    border-right: solid 20px rgb(20, 86, 110);
+}
