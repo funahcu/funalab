@@ -1,0 +1,34 @@
+@import url("../funalab.css");
+
+nav {
+    text-align: center;
+}
+ 
+nav ul {
+    margin: 0 ;
+    padding: 0 ;
+}
+
+nav ul li{
+    list-style: none;
+    display: inline-block;
+    width: 20%; /* ここで項目の幅を指定します */
+}
+nav ul li::after{
+    content: "/";
+    padding-left: 30px; /* li要素のwidthと調整が必要 */
+    color: #888;
+}
+ 
+nav ul li:last-child::after {
+    content: ""; /* 最後のli要素の「/」をなくします */
+}
+ 
+nav ul li a {
+    text-decoration: none;
+    color: #333;
+}
+ 
+/*nav li:hover{
+    background-color: #FFAF87; /* 背景色を指定します */
+}*/
