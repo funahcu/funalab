@@ -19,3 +19,10 @@ h2:before {
     border-bottom: solid 10px transparent;
     border-right: solid 20px rgb(20, 86, 110);
 }
+
+img {
+    padding: 0;
+    border: 0;
+    margin: 0;
+}
+

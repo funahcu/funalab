@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style type="text/css">
+      .fish-stroke { fill: none; stroke: #F5D78E; stroke-width: 3; }
+      .node { fill: #F5D78E; stroke: none; }
+      .text-funa { font-family: Arial, sans-serif; font-size: 155; font-weight: bold; fill: #00B3B3; }
+      .text-lab { font-family: Arial, sans-serif; font-size: 155; font-weight: bold; fill: #FF4500; }
+      .node-label { font-family: monospace; font-size: 8; fill: black; text-anchor: middle; }
+    </style>
+  </defs>
+  
+  <!-- Fish network structure -->
+  <g id="fish" class="fish-stroke">
+    <!-- Main outlines -->
+    <path d="M 100,300 C 125,260 150,240 200,200" class="fish-stroke" />
+    <path d="M 100,300 C 125,330 150,360 200,400" class="fish-stroke" />
+    
+    <!-- Simplified upper body path -->
+    <path d="M 200,200 L 250,180" class="fish-stroke" />
+    <path d="M 300,170 L 350,170 L 400,200 L 450,170 L 500,200 L 550,230 L 600,250" class="fish-stroke" />
+    
+    <!-- Head connections -->
+    <line x1="150" y1="240" x2="200" y2="200" class="fish-stroke" />
+    <line x1="150" y1="360" x2="200" y2="400" class="fish-stroke" />
+    <line x1="200" y1="200" x2="200" y2="400" class="fish-stroke" />
+    
+    <!-- Connect node 6 to node 9 -->
+    <path d="M 250,180 C 275,175 285,170 300,170" class="fish-stroke" />
+    
+    <!-- Connections between nodes -->
+    <line x1="250" y1="180" x2="300" y2="120" class="fish-stroke" />
+    <line x1="300" y1="120" x2="360" y2="120" class="fish-stroke" />
+    <line x1="360" y1="120" x2="450" y2="170" class="fish-stroke" />
+    <line x1="200" y1="400" x2="250" y2="420" class="fish-stroke" />
+    <line x1="200" y1="400" x2="300" y2="380" class="fish-stroke" />
+    <line x1="200" y1="400" x2="300" y2="420" class="fish-stroke" />
+    <line x1="450" y1="370" x2="500" y2="400" class="fish-stroke" />
+    <line x1="500" y1="400" x2="550" y2="370" class="fish-stroke" />
+    <line x1="250" y1="180" x2="300" y2="220" class="fish-stroke" />
+    
+    <!-- Upper Fin -->
+    <path d="M 300,170 L 300,120 L 360,120 L 450,170" class="fish-stroke" />
+    <line x1="300" y1="170" x2="300" y2="120" class="fish-stroke" />
+    <line x1="350" y1="170" x2="360" y2="120" class="fish-stroke" />
+    
+    <!-- Bottom Fin -->
+    <path d="M 300,450 L 300,420 L 350,420 L 300,450 Z" class="fish-stroke" />
+    <line x1="250" y1="420" x2="300" y2="450" class="fish-stroke" />
+    
+    <!-- Diamond Patterns -->
+    <!-- First row of diamonds -->
+    <path d="M 300,220 L 350,170 L 400,200 L 350,240 Z" class="fish-stroke" />
+    <path d="M 300,280 L 350,240 L 400,270 L 350,310 Z" class="fish-stroke" />
+    <path d="M 300,320 L 350,310 L 400,330 L 350,360 Z" class="fish-stroke" />
+    <path d="M 300,380 L 350,360 L 400,400 L 350,420 Z" class="fish-stroke" />
+    
+    <!-- Second row of diamonds -->
+    <path d="M 350,170 L 400,200 L 450,170 L 400,200 Z" class="fish-stroke" />
+    <path d="M 350,240 L 400,200 L 450,230 L 400,270 Z" class="fish-stroke" />
+    <path d="M 350,310 L 400,270 L 450,300 L 400,330 Z" class="fish-stroke" />
+    <path d="M 350,360 L 400,330 L 450,370 L 400,400 Z" class="fish-stroke" />
+    
+    <!-- Third row of diamonds -->
+    <path d="M 400,200 L 450,170 L 500,200 L 450,230 Z" class="fish-stroke" />
+    <path d="M 400,270 L 450,230 L 500,250 L 450,300 Z" class="fish-stroke" />
+    <path d="M 400,330 L 450,300 L 500,350 L 450,370 Z" class="fish-stroke" />
+    
+    <!-- Node 25 to Node 33 with flatter curve -->
+    <path d="M 400,400 C 425,415 475,415 500,400" class="fish-stroke" />
+    
+    <!-- Fourth row of diamonds -->
+    <path d="M 450,170 L 500,200 L 550,230 L 500,200 Z" class="fish-stroke" />
+    <path d="M 450,230 L 500,250 L 550,300 L 500,250 Z" class="fish-stroke" />
+    <path d="M 450,300 L 500,350 L 550,370 L 500,350 Z" class="fish-stroke" />
+    
+    <!-- Tail diamonds -->
+    <path d="M 500,250 L 550,230 L 600,250 L 550,300 Z" class="fish-stroke" />
+    <path d="M 500,350 L 550,300 L 600,350 L 550,370 Z" class="fish-stroke" />
+    
+    <!-- Fish Tail Structure -->
+    <path d="M 550,230 L 600,250 L 650,300 L 600,300 L 550,300 Z" class="fish-stroke" />
+    <path d="M 550,300 L 600,300 L 650,300 L 600,350 L 550,370 Z" class="fish-stroke" />
+    <line x1="650" y1="300" x2="700" y2="300" class="fish-stroke" />
+    <path d="M 600,250 C 630,220 670,200 700,160" class="fish-stroke" />
+    <path d="M 600,350 C 630,380 670,400 700,440" class="fish-stroke" />
+    <path d="M 700,160 L 700,300 L 700,440" class="fish-stroke" />
+    
+    <!-- Key Connection -->
+    <line x1="300" y1="220" x2="350" y2="170" class="fish-stroke" />
+    
+    <!-- Fish Eye -->
+    <circle cx="170" cy="300" r="18" fill="#F5D78E" />
+    
+    <!-- Nodes -->
+    <circle cx="100" cy="300" r="5" class="node" />
+    <circle cx="150" cy="240" r="5" class="node" />
+    <circle cx="150" cy="360" r="5" class="node" />
+    <circle cx="200" cy="200" r="5" class="node" />
+    <circle cx="200" cy="400" r="5" class="node" />
+    <circle cx="250" cy="180" r="5" class="node" />
+    <circle cx="250" cy="420" r="5" class="node" />
+    <circle cx="300" cy="120" r="5" class="node" />
+    <circle cx="300" cy="170" r="5" class="node" />
+    <circle cx="300" cy="220" r="5" class="node" />
+    <circle cx="300" cy="280" r="5" class="node" />
+    <circle cx="300" cy="320" r="5" class="node" />
+    <circle cx="300" cy="380" r="5" class="node" />
+    <circle cx="300" cy="420" r="5" class="node" />
+    <circle cx="300" cy="450" r="5" class="node" />
+    <circle cx="350" cy="170" r="5" class="node" />
+    <circle cx="350" cy="240" r="5" class="node" />
+    <circle cx="350" cy="310" r="5" class="node" />
+    <circle cx="350" cy="360" r="5" class="node" />
+    <circle cx="350" cy="420" r="5" class="node" />
+    <circle cx="360" cy="120" r="5" class="node" />
+    <circle cx="400" cy="200" r="5" class="node" />
+    <circle cx="400" cy="270" r="5" class="node" />
+    <circle cx="400" cy="330" r="5" class="node" />
+    <circle cx="400" cy="400" r="5" class="node" />
+    <circle cx="450" cy="170" r="5" class="node" />
+    <circle cx="450" cy="230" r="5" class="node" />
+    <circle cx="450" cy="300" r="5" class="node" />
+    <circle cx="450" cy="370" r="5" class="node" />
+    <circle cx="500" cy="200" r="5" class="node" />
+    <circle cx="500" cy="250" r="5" class="node" />
+    <circle cx="500" cy="350" r="5" class="node" />
+    <circle cx="500" cy="400" r="5" class="node" />
+    <circle cx="550" cy="230" r="5" class="node" />
+    <circle cx="550" cy="300" r="5" class="node" />
+    <circle cx="550" cy="370" r="5" class="node" />
+    <circle cx="600" cy="250" r="5" class="node" />
+    <circle cx="600" cy="300" r="5" class="node" />
+    <circle cx="600" cy="350" r="5" class="node" />
+    <circle cx="650" cy="300" r="5" class="node" />
+    <circle cx="700" cy="160" r="5" class="node" />
+    <circle cx="700" cy="300" r="5" class="node" />
+    <circle cx="700" cy="440" r="5" class="node" />
+  </g>
+  
+  <!-- Node labels - all labels removed as per instruction -->
+  <g id="node-labels">
+  </g>
+  
+  <!-- Text Logo -->
+  <g id="logo-text">
+    <text x="170" y="350" class="text-funa" font-size="155">funa</text>
+    <text x="510" y="350" class="text-lab" font-size="155">lab</text>
+  </g>
+</svg>
