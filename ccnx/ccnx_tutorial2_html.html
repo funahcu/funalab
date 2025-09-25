@@ -222,11 +222,11 @@ PIT :
             <h3>Fixed Headerの解析</h3>
 <img src="interest1.png" class="content-image">
 
-            <p>以下のRFCの記述と対応させると、8バイトのfixed header（固定ヘッダ）部分は以下の値であることがわかります。※値は特に断らない限り、10進数に直して示します</p>
+            <p>以下の<a href="https://datatracker.ietf.org/doc/html/rfc8609">RFC8609</a>の記述と対応させると、8バイトのfixed header（固定ヘッダ）部分は以下の値であることがわかります。※値は特に断らない限り、10進数に直して示します</p>
             
             <ul>
-                <li>Version=1</li>
-                <li>Packet Type=PT_INTEREST (1)</li>
+                <li>Version = 1</li>
+                <li>Packet Type = PT_INTEREST (1)</li>
                 <li>PacketLength = 35</li>
                 <li>HopLimit = 32</li>
                 <li>Reserved = 0</li>
@@ -305,7 +305,7 @@ PIT :
             
             <ul>
                 <li>Type = T_NAME (0)</li>
-                <li>Length = 13</li>
+                <li>Length = 13 (Name TLV 8バイトとChunk TLV 5バイト)</li>
             </ul>
             
             <div class="config-box">
@@ -324,7 +324,7 @@ PIT :
             <ul>
                 <li>Type = T_NAME_SEGMENT (1)</li>
                 <li>Length = 4</li>
-                <li>Value = "test" (74 65 73 74)</li>
+                <li>Value = "test" (0x74 0x65 0x73 0x74 の4バイト)</li>
             </ul>
             
             <p>これらのName segmentを "/"でつなぎ、先頭にccnx:/をつけたものがURIですので、ここではccnx:/testが指定されています。</p>
@@ -351,7 +351,7 @@ PIT :
             <h3>チャンク番号の解析</h3>
             <p>最後にチャンク番号がついていますが、Cefore0.10.0gは既述のように期限切れのinternet draft（<a href="https://datatracker.ietf.org/doc/html/draft-mosko-icnrg-ccnxchunking-02" target="_blank">draft-mosko-icnrg-ccnxchunking-02</a>）の仕様に沿っています。</p>
             
-            <p>以下との対応でみると以下の値であることがわかります：</p>
+            <p>以下との対応でみると次の値であることがわかります：</p>
             
             <ul>
                 <li>Type = T_CHUNK (16)</li>
