@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCNxとの戯れ（その1）</title>
+    <link rel="stylesheet" href="ccnx_tutorial_css.css">
+</head>
+<body>
+    <header>
+        <h1>CCNxとの戯れ（その1）</h1>
+        <p class="subtitle">Content-Centric Networking の導入とCeforeの基本操作</p>
+    </header>
+
+    <main>
+        <section id="introduction">
+            <h2>はじめに</h2>
+            <p>CCNxは<strong>CCN (Content-Centric Networking)</strong>、あるいは<strong>情報指向ネットワークICN (Information-Centric Networking)</strong> のプロトコルです。このプロトコルで遊んでみましょう。</p>
+            
+            <p>このプロトコルの実装としてはNICTが開発している<strong>Cefore</strong> (<a href="https://github.com/cefore" target="_blank">https://github.com/cefore</a>) があります。このプログラムを導入してCCNxを実際に使ってみましょう。</p>
+            
+            <p>dockerで導入するといろいろ遊べるのですが、まずは素のLinuxにCeforeを導入する手順から確認していきましょう。Ubuntu 22.04を対象に進めてみます。</p>
+        </section>
+
+        <section id="installation">
+            <h2>Ceforeのインストール</h2>
+            
+            <h3>コードの取得</h3>
+            <p>まずは github からコードをcloneしていきます。</p>
+            <div class="code-block">
+                <pre><code>git clone https://github.com/cefore/cefore.git</code></pre>
+            </div>
+            
+            <p>これでコード一式が取得できます。2025年9月20日時点でmasterブランチのHEADはバージョン0.11.0になっています。</p>
+            
+            <div class="note-box">
+                <h4>バージョンの互換性について</h4>
+                <p>実は前バージョンである0.10.0gと0.11.0は互換性がありません。最新機能を試してみたい場合は0.11.0の系統、ほかに開発されたプログラムが0.10.0gを想定しているなら0.10.0gの系統を使ったほうがよいでしょう。</p>
+                
+                <ul>
+                    <li><strong>0.10.0gまで</strong>のT_CHUNKなど、チャンク番号の取り決めは古いinternet-draft（期限切れ）に沿っています。<br>
+                    <em>draft-mosko-icnrg-ccnxchunking-02</em></li>
+                    
+                    <li><strong>0.11.0</strong>のT_CHUNKなどは次のinternet-draftに沿っていますが、これも期限切れです。<br>
+                    <em>draft-mosko-icnrg-ccnxchunking-03</em><br>
+                    <em>draft-irtf-icnrg-ccnxchunking-01</em></li>
+                    
+                    <li><strong>現在有効なinternet-draft</strong>ではT_CHUNKがさらに変更になっているので注意しておきましょう。<br>
+                    <em>draft-irtf-icnrg-ccnxchunking-02</em></li>
+                </ul>
+            </div>
+
+            <h3>ビルド手順</h3>
+            <p>それでは0.11.0を導入する手順をみていきます。基本的にはgithubのページにある通りです。</p>
+            
+            <div class="code-block">
+<pre><code>
+sudo apt install libssl-dev
+sudo apt install automake
+cd $CEFORE  # ceforeを展開したディレクトリ
+# ※0.10.0gを導入するには以下のcheckoutを実行してから次に進みます
+# （git checkout 0.10.0g）
+autoconf
+automake
+./configure
+make
+sudo make install
+sudo ldconfig</code></pre>
+            </div>
+        </section>
+
+        <section id="basic-operation">
+            <h2>基本操作</h2>
+            
+            <h3>Ceforeデーモンの起動</h3>
+            <p>ceforeの本体は<code>cefnetd</code>というデーモンプログラムです。これを起動するために<code>cefnetdstart</code>というコマンドを実行します。</p>
+            
+            <div class="code-block">
+                <pre><code>cefnetdstart</code></pre>
+            </div>
+            
+            <p>問題なく起動できれば<code>cefstatus</code>という状態表示コマンドで動作状態が確認できます。</p>
+            
+            <h4>起動中の例</h4>
+            <div class="terminal-output">
+                <pre>$ cefstatus
+CCNx Version     : 1
+Port             : 9896
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : None
+FWD Strategy     : None
+Interest Return  : Disabled
+Faces : 7
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  32 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+  faceid =   8 : Local face (for cefbabeld)
+FIB(App) :
+  Entry is empty
+FIB :
+  Entry is empty
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty</pre>
+            </div>
+            
+            <p>一方、cefnetdを終了させるには<code>cefnetdstop</code>とします。起動していないときのcefstatus表示は以下のようになるでしょう。</p>
+            
+            <h4>起動中でないときの例</h4>
+            <div class="terminal-output">
+                <pre>$ cefstatus
+2025-09-21 14:13:35.298 [cefctrl] ERROR: cef_client_connect (connect:No such file or directory)
+[cef_ctrl] ERROR: Failed to connect to cefnetd.</pre>
+            </div>
+        </section>
+
+        <section id="file-operations">
+            <h2>ファイル操作の実践</h2>
+            
+            <p>さて単独ホストでできることは限られるのですが、とりあえずファイルの取得をやってみましょう。<code>cefputfile</code>というコマンドで、指定されたファイルのデータにccnx:形式のURIを付与してCeforeに登録できます。</p>
+            
+            <h3>ファイルの登録</h3>
+            <div class="code-block">
+                <pre><code>cefputfile ccnx:/test -f test.txt</code></pre>
+            </div>
+            <p>この例ではtest.txtというファイルの中身を読み込み、ccnx:/test というURIでアクセス可能になります。なおデフォルトではブロックサイズが1024バイトのため、これより大きいファイルは1024バイトごとにチャンク番号をつけて管理されます。</p>
+            
+            <h3>ファイルの取得</h3>
+            <div class="code-block">
+                <pre><code>cefgetfile ccnx:/test -f output.dat</code></pre>
+            </div>
+            <p>この例ではccnx:/test というURIでCeforeにアクセスし、取得できたデータはoutput.datというファイル名で保存します。</p>
+            
+            <h3>実際の動作例</h3>
+            <p>実際にcefputfileを試してみましょう。</p>
+            
+            <div class="terminal-output">
+                <pre>$ cefputfile ccnx:/test -f test.txt
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test
+[cefputfile] File        = test.txt
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 300 sec
+[cefputfile] Expiration  = 3600 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 1
+[cefputfile] Tx Bytes   = 21
+[cefputfile] Duration   = 0.004 sec
+[cefputfile] Throughput = 51756 bps</pre>
+            </div>
+            
+            <p>以上のようにデフォルトでは5Mbpsで登録されたことがわかります。</p>
+        </section>
+
+        <section id="cache-problem">
+            <h2>キャッシュ機能の問題と対処</h2>
+            
+            <p>それではこのファイルを取得してみましょう。</p>
+            
+            <div class="terminal-output">
+                <pre>$ cefgetfile ccnx:/test -f output.dat
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ...OK
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test
+[cefgetfile] Start sending Interests
+[cefgetfile] Suspended to retrieve the content because the number of Interest retransmission has reached its limit, 5.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 0
+[cefgetfile] Rx Frames (ContentObject) = 0
+[cefgetfile] Received frame ... NG
+[cefgetfile] Could not receive anything</pre>
+            </div>
+            
+            <p>このように、5回再送したが取得できなかったという結果になることでしょう。これはなぜかというと、ceforeの設定が<code>CS_MODE=0</code>になっており、キャッシュを利用しないようになっているからです。</p>
+            
+            <div class="warning-box">
+                <h4>キャッシュが無効な状態での取得方法</h4>
+                <p>この状態でも取得したいなら、以下の手順を踏むことになります：</p>
+                <ol>
+                    <li><code>cefgetfile</code>で取得開始（5回までの再送状態に入る）</li>
+                    <li><code>cefgetfile</code>があきらめるまでのあいだに<code>cefputfile</code>を実行</li>
+                </ol>
+                
+                <p>このようにすると、cefgetfileが成功します。これはcefgetfileから来たinterestの有効期間（デフォルトで2秒）内に、要求されたccnxコンテンツがcefputfileでceforeに入ってきたと解釈できます。このときPITにそのオブジェクトのinterestが登録されているので、contentを返送します。</p>
+            </div>
+        </section>
+<img src="cefget_cefput.png" style="transform: scale(0.4); transform-origin: left top; display: block; margin: 1rem 0;">
+
+        <section id="cache-config">
+            <h2>キャッシュ機能の設定</h2>
+            
+            <p>これだといかにも不便ですね。キャッシュ機能が特徴であるCCNを最大限に活用するにはキャッシュを有効にするのがよいでしょう。このため、先に述べた<code>CS_MODE</code>を変更します。</p>
+            
+            <p>Ceforeをインストールすると、デフォルトで<code>/usr/local/cefore/cefnetd.conf</code>というパスに設定ファイルが置かれます。適当なエディタを使い、管理者権限で編集しましょう。</p>
+            
+            <div class="config-box">
+                <h4>設定ファイルの内容</h4>
+                <pre># Content Store used by cefnetd
+# 0 : No Content Store
+# 1 : Use cefnetd's Local cache
+# 2 : Use external Content Store (use csmgrd)
+# 3 : Use external Content Store (use conpubd)
+
+#CS_MODE=0</pre>
+            </div>
+            
+            <p>デフォルトでは<code>CS_MODE=0</code>なので<code>CS_MODE=1</code>のように追記します。行頭に#があるとコメントとなって無効行になるので注意しましょう。</p>
+            
+            <p>編集を終えたらcefnetdを起動し直します。</p>
+            
+            <div class="code-block">
+                <pre><code>
+cefnetdstop
+cefnetdstart</code></pre>
+            </div>
+            
+            <p>今度はcefnetdにキャッシュされるので、先にcefputfileをしてからcefgetfileをしても問題なくファイルデータが取得できます。</p>
+            
+            <div class="code-block">
+                <pre><code>
+$ cefputfile ccnx:/test -f test.txt
+$ cefgetfile ccnx:/test -f output.dat</code></pre>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>補足：</strong> CS_MODE=2にすると、キャッシュ専用のプログラムである<code>csmgrd</code>を使うようになります。</p>
+            </div>
+        </section>
+
+        <section id="conclusion">
+            <h2>まとめ</h2>
+            
+            <p>いずれにしてもCCNxではCCNx URIを指定してinterestという要求パケットを送り、それに対してcontent objectが返ってくるという動きになります。</p>
+            
+            <p>実際に2ノード以上のあいだでCCNxパケットを飛ばすのは（その2）にしたいと思います。</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Junichi FUNASAKA</p>
+    </footer>
+</body>
+</html>

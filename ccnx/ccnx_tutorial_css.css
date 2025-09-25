@@ -1,0 +1,296 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+    font-size: 16px;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 300;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+/* Main content */
+main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: white;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+    border-bottom: 3px solid #667eea;
+    padding-bottom: 0.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+
+h3 {
+    font-size: 1.4rem;
+    margin-top: 2rem;
+    color: #34495e;
+}
+
+h4 {
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    color: #5a6c7d;
+}
+
+p {
+    margin-bottom: 1rem;
+    text-align: justify;
+}
+
+/* Links */
+a {
+    color: #667eea;
+    text-decoration: none;
+    border-bottom: 1px dotted #667eea;
+}
+
+a:hover {
+    color: #764ba2;
+    border-bottom-color: #764ba2;
+}
+
+/* Code blocks */
+.code-block {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    overflow-x: auto;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.code-block pre {
+    margin: 0;
+    white-space: pre-wrap;
+    text-indent: 0;
+}
+
+.code-block code {
+    background: none;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Terminal output */
+.terminal-output {
+    background: #1a202c;
+    color: #a0aec0;
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow-x: auto;
+    border-left: 4px solid #4a5568;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.terminal-output pre {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+/* Inline code */
+code {
+    background: #f1f5f9;
+    color: #e53e3e;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+/* Info boxes */
+.note-box, .warning-box, .info-box, .config-box {
+    padding: 1.5rem;
+    border-radius: 6px;
+    margin: 1.5rem 0;
+    border-left: 4px solid;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.note-box {
+    background: #f0f9ff;
+    border-left-color: #0ea5e9;
+}
+
+.note-box h4 {
+    color: #0c4a6e;
+    margin-bottom: 1rem;
+}
+
+.warning-box {
+    background: #fef3c7;
+    border-left-color: #f59e0b;
+}
+
+.warning-box h4 {
+    color: #92400e;
+    margin-bottom: 1rem;
+}
+
+.info-box {
+    background: #f0fdf4;
+    border-left-color: #22c55e;
+}
+
+.info-box p {
+    color: #166534;
+    margin-bottom: 0;
+}
+
+.config-box {
+    background: #f8fafc;
+    border-left-color: #64748b;
+}
+
+.config-box h4 {
+    color: #475569;
+    margin-bottom: 1rem;
+}
+
+.config-box pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+.content-image {
+    transform: scale(1.0);
+    transform-origin: left top;
+    display: block;
+    margin: 1rem 0;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Lists */
+ul, ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+/* Emphasis */
+strong, em {
+    color: #2c3e50;
+}
+
+/* Sections */
+section {
+    margin-bottom: 2rem;
+}
+
+section:first-child {
+    margin-top: 0;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem;
+    background: #2c3e50;
+    color: white;
+    margin-top: 2rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    main {
+        margin: 1rem;
+        padding: 1rem;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    h3 {
+        font-size: 1.3rem;
+    }
+    
+    .code-block, .terminal-output {
+        font-size: 0.8rem;
+        padding: 1rem;
+    }
+    
+    .note-box, .warning-box, .info-box, .config-box {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+    }
+    
+    header {
+        padding: 1.5rem 1rem;
+    }
+    
+    header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+    }
+}

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCNxとの戯れ（その2）</title>
+    <link rel="stylesheet" href="ccnx_tutorial_css.css">
+</head>
+<body>
+    <header>
+        <h1>CCNxとの戯れ（その2）</h1>
+        <p class="subtitle">2ノード間でのCCNxパケット通信とパケット解析</p>
+    </header>
+
+    <main>
+        <section id="introduction">
+            <h2>はじめに</h2>
+            <p>ここではCCNxパケットを実際に飛ばして、様子を観察していきたいと思います。</p>
+            
+            <p>その1でインストールしたCeforeをもう1台のUbuntuの動くPCにインストールできる人はそれで大丈夫です。WindowsやMacが1台しかないという人はDockerの環境で試してもらうのがいいでしょう。</p>
+        </section>
+
+        <section id="docker-setup">
+            <h2>Docker環境の構築</h2>
+            
+            <p>Docker Desktopをインストールしてdockerコマンドで環境を構築する例を示します。dockerコマンドが実行可能になった前提で進めていきます。</p>
+            
+            <p><a href="icn-docker-sample.zip">icn-docker-sample.zip</a>ファイルを展開し、Dockerfileとdocker-compose.ymlを置いたディレクトリで以下のコマンドを実行します：</p>
+            
+            <div class="code-block">
+<pre><code>docker compose up -d</code></pre>
+            </div>
+            
+            <p>端末をひとつ使って以下のコマンドを実行すると、コンテナcefore-node1でコマンド実行ができます：</p>
+            
+            <div class="code-block">
+<pre><code>docker exec -it cefore-node1 bash</code></pre>
+            </div>
+            
+            <p>もうひとつ端末を使って以下のコマンドを実行することで、もう1つのコンテナcefore-node2でコマンド実行ができます：</p>
+            
+            <div class="code-block">
+<pre><code>docker exec -it cefore-node2 bash</code></pre>
+            </div>
+            
+            <p>これらの2つのコンテナではすでにCefore（バージョン0.10.0g）が導入済みです。<code>cefnetdstart</code>でcefnetdを起動し、<code>cefstatus</code>で起動中であることを確認しておきましょう。両方のコンテナで実行しておきます。</p>
+        </section>
+
+        <section id="basic-test">
+            <h2>基本的な通信テスト</h2>
+            
+            <h3>Node1でのファイル登録</h3>
+            <p>それでは「その1」でやったように、cefore-node1でcefputfileしてみましょう。</p>
+            
+            <div class="code-block">
+<pre><code>cefputfile ccnx:/test -f test.txt</code></pre>
+            </div>
+            
+            <p>cefore-node1のCS_MODEが1以上であればこのデータはキャッシュされます。</p>
+            
+            <div class="terminal-output">
+                <pre>cefore@cefore-node1:~$ cefputfile ccnx:/test -f test.txt
+[cefputfile] Start
+[cefputfile] Parsing parameters ... OK
+[cefputfile] Init Cefore Client package ... OK
+[cefputfile] Conversion from URI into Name ... OK
+[cefputfile] Checking the input file ... OK
+[cefputfile] Connect to cefnetd ... OK
+[cefputfile] URI         = ccnx:/test
+[cefputfile] File        = test.txt
+[cefputfile] Rate        = 5.000 Mbps
+[cefputfile] Block Size  = 1024 Bytes
+[cefputfile] Cache Time  = 300 sec
+[cefputfile] Expiration  = 3600 sec
+[cefputfile] Start creating Content Objects
+[cefputfile] Unconnect to cefnetd ... OK
+[cefputfile] Terminate
+[cefputfile] Tx Frames  = 1
+[cefputfile] Tx Bytes   = 16
+[cefputfile] Duration   = 0.004 sec
+[cefputfile] Throughput = 39372 bps</pre>
+            </div>
+
+            <h3>Node2からのアクセス試行（失敗例）</h3>
+            <p>次にcefore-node2からcefore-node1にアクセスして、このccnx:/testを取得してみましょう。</p>
+            
+            <div class="code-block">
+<pre><code>cefgetfile ccnx:/test -f output.dat</code></pre>
+            </div>
+            
+            <p>このコマンドは自身のホストcefore-node2で動いているcefore (cefnetd) にinterestを投げるもので、このノードにはないコンテンツですのでceforeはinterestを転送しようとするのですが、転送のための参照テーブル (Forwarding Interest Base: FIB) にこのCCNx URIが登録されていません。したがって取得は失敗します。</p>
+            
+            <div class="terminal-output">
+                <pre>cefore@cefore-node2:~$ cefgetfile ccnx:/test -f output.dat
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ... OK
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test
+[cefgetfile] Start sending Interests
+[cefgetfile] Suspended to retrieve the content because the number of Interest retransmission has reached its limit, 5.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 0
+[cefgetfile] Rx Frames (ContentObject) = 0
+[cefgetfile] Received frame ... NG
+[cefgetfile] Could not receive anything</pre>
+            </div>
+            
+            <p>このとき、<code>cefstatus</code>を実行してみると、FIBにエントリがないことがわかります。</p>
+            
+            <div class="terminal-output">
+                <pre>cefore@cefore-node2:~$ cefstatus
+CCNx Version     : 1
+Port             : 9896
+Rx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Tx Interest      : 0 (RGL[0], SYM[0], SEL[0])
+Rx ContentObject : 0
+Tx ContentObject : 0
+Cache Mode       : Localcache
+FWD Strategy     : default
+Faces : 6
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  16 : Local face
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB :
+  Entry is empty
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty</pre>
+            </div>
+        </section>
+
+        <section id="routing-setup">
+            <h2>ルーティング設定</h2>
+            
+            <p>FIBにinterestの転送先としてcefore-node1を登録するにはどうしたらいいのでしょうか。interestをルーティングするという意味で<code>cefroute</code>というコマンドが用意されています。cefore-node1のIPアドレスが10.1.1.11であれば以下のように実行します。</p>
+            
+            <div class="code-block">
+<pre><code>cefroute add ccnx:/test udp 10.1.1.11 9896</code></pre>
+            </div>
+            
+            <p>確かにFIBができたことは<code>cefstatus</code>コマンドでも確認できます。</p>
+            
+            <div class="terminal-output">
+                <pre>cefore@cefore-node2:~$ cefstatus
+CCNx Version     : 1
+Port             : 9896
+Rx Interest      : 56 (RGL[56], SYM[0], SEL[0])
+Tx Interest      : 8 (RGL[8], SYM[0], SEL[0])
+Rx ContentObject : 1
+Tx ContentObject : 1
+Cache Mode       : Localcache
+FWD Strategy     : default
+Faces : 8
+  faceid =  19 : address = 10.1.1.11:9896 (udp)
+  faceid =   4 : IPv4 Listen face (udp)
+  faceid =   0 : Local face
+  faceid =  22 : Local face
+  faceid =  20 : address = 0.0.38.168:9896 (udp)
+  faceid =   5 : IPv6 Listen face (udp)
+  faceid =   6 : IPv4 Listen face (tcp)
+  faceid =   7 : IPv6 Listen face (tcp)
+FIB(App) :
+  Entry is empty
+FIB : 1
+  ccnx:/
+    Faces : 19 (-s-) RtCost=0
+            20 (-s-) RtCost=0
+PIT(App) :
+  Entry is empty
+PIT :
+  Entry is empty</pre>
+            </div>
+
+            <h3>成功例</h3>
+            <p>それでは<code>cefgetfile</code>を再度実行してみましょう。今度はちゃんと取得できるはずです。</p>
+            
+            <div class="terminal-output">
+                <pre>cefore@cefore-node2:~$ cefgetfile ccnx:/test -f output.dat
+[cefgetfile] Start
+[cefgetfile] Parsing parameters ... OK
+[cefgetfile] Init Cefore Client package ... OK
+[cefgetfile] Conversion from URI into Name ... OK
+[cefgetfile] Checking the output file ... OK
+[cefgetfile] Connect to cefnetd ... OK
+[cefgetfile] URI=ccnx:/test
+[cefgetfile] Start sending Interests
+[cefgetfile] Completed to get all the chunks.
+[cefgetfile] Unconnect to cefnetd ... OK
+[cefgetfile] Terminate
+[cefgetfile] Rx Frames (All)           = 1
+[cefgetfile] Rx Frames (ContentObject) = 1
+[cefgetfile] Rx Bytes (All)            = 32
+[cefgetfile] Rx Bytes (ContentObject)  = 16
+[cefgetfile] Duration                  = 0.000 sec
+[cefgetfile] Jitter (Ave)              = 0 us
+[cefgetfile] Jitter (Max)              = 0 us
+[cefgetfile] Jitter (Var)              = 0 us</pre>
+            </div>
+        </section>
+
+        <section id="packet-analysis">
+            <h2>パケット解析</h2>
+            
+            <p>このときのCCNxパケットのやりとりをWiresharkでキャプチャしてみましょう。</p>
+            
+            <div class="note-box">
+                <p><code>tcpdump</code>がなければ<code>sudo apt install tcpdump</code>で導入し、<code>tcpdump -i eth0 -w cefore.dmp udp port 9896</code>のようにキャプチャすることを想定しています。</p>
+            </div>
+            
+            <p>githubのceforeのリポジトリからLUAファイルをもってきてWiresharkに登録すると、CCNxパケットが解析できて便利です。CeforeのCCNx実装はIPのオーバーレイですので、UDPパケットの中にCCNxパケットがおさまっている形になっています。</p>
+
+            <h3>Fixed Headerの解析</h3>
+<img src="interest1.png" class="content-image">
+
+            <p>以下のRFCの記述と対応させると、8バイトのfixed header（固定ヘッダ）部分は以下の値であることがわかります。※値は特に断らない限り、10進数に直して示します</p>
+            
+            <ul>
+                <li>Version=1</li>
+                <li>Packet Type=PT_INTEREST (1)</li>
+                <li>PacketLength = 35</li>
+                <li>HopLimit = 32</li>
+                <li>Reserved = 0</li>
+                <li>Flags = 0</li>
+                <li>HeaderLength = 14</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Fixed Header Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |    Version    |  PT_INTEREST  |         PacketLength          |
+   +---------------+---------------+---------------+---------------+
+   |   HopLimit    |   Reserved    |     Flags     | HeaderLength  |
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+            
+            <p>固定ヘッダが8バイトでヘッダ長が14バイトであることからオプションヘッダが6バイト入っていることがわかります。</p>
+
+            <h3>Option Headerの解析</h3>
+<img src="interest2.png" class="content-image">
+
+            <p>オプションヘッダ（Hop-by-Hop TLV headers）は以下との対応で次の値となります：</p>
+            
+            <ul>
+                <li>option type = T_INTLIFE (1)</li>
+                <li>Length = 2 [bytes]</li>
+                <li>Lifetime = 2000 (07 d0 = 256*7 + 13*16 = 2000) [ms]</li>
+            </ul>
+            
+            <p>このinterestの有効期間は2秒間ですね。</p>
+            
+            <div class="config-box">
+                <h4>Option Header Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |          T_INTLIFE            |             Length            |
+   +---------------+---------------+---------------+---------------+
+   /                                                               /
+   /                      Lifetime (Length octets)                 /
+   /                                                               /
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+
+            <h3>CCNx Message TLVの解析</h3>
+<img src="interest3.png" class="content-image">
+
+            <p>ヘッダが終わればあとはCCNx Message TLVになります。以下との対応で次の値であることがわかります：</p>
+            
+            <ul>
+                <li>MessageType = T_INTEREST (1)</li>
+                <li>MessageLength = 17</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Message TLV Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |         MessageType           |         MessageLength         |
+   +---------------+---------------+---------------+---------------+
+   / Name TLV       (Type = T_NAME)                                /
+   +---------------+---------------+---------------+---------------+
+   / Optional Message TLVs   (Various Types)                       /
+   +---------------+---------------+---------------+---------------+
+   / Optional Payload TLV  (Type = T_PAYLOAD)                      /
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+
+            <h3>Name TLVの解析</h3>
+<img src="interest4.png" class="content-image">
+
+            <p>メッセージとしてはName TLVが続いていることがわかります。中にはName segment TLVsが含まれることになります。以下と対応づけると次の値になっています：</p>
+            
+            <ul>
+                <li>Type = T_NAME (0)</li>
+                <li>Length = 13</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Name TLV Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |            T_NAME             |            Length             |
+   +---------------+---------------+---------------+---------------+
+   / Name segment TLVs                                             /
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+            
+            <p>Name segment TLVをみていくと、以下に対応して次の値が指定されていることがわかります：</p>
+            
+            <ul>
+                <li>Type = T_NAME_SEGMENT (1)</li>
+                <li>Length = 4</li>
+                <li>Value = "test" (74 65 73 74)</li>
+            </ul>
+            
+            <p>これらのName segmentを "/"でつなぎ、先頭にccnx:/をつけたものがURIですので、ここではccnx:/testが指定されています。</p>
+            
+            <div class="config-box">
+                <h4>Name Segment Example</h4>
+                <pre>1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++---------------+---------------+---------------+---------------+
+|            (T_NAME)           |           0x14 (20)           |
++---------------+---------------+---------------+---------------+
+|        (T_NAME_SEGMENT)       |           0x03 (3)            |
++---------------+---------------+---------------+---------------+
+|       f                o               o      |(T_NAME_SEGMENT)
++---------------+---------------+---------------+---------------+
+|               |            0x03 (3)           |       b       |
++---------------+---------------+---------------+---------------+
+|      a                r       |           (T_NAME_SEGMENT)    |
++---------------+---------------+---------------+---------------+
+|           0x02 (2)            |       h       |       i       |
++---------------+---------------+---------------+---------------+</pre>
+            </div>
+
+            <h3>チャンク番号の解析</h3>
+            <p>最後にチャンク番号がついていますが、Cefore0.10.0gは既述のように期限切れのinternet draft（<a href="https://datatracker.ietf.org/doc/html/draft-mosko-icnrg-ccnxchunking-02" target="_blank">draft-mosko-icnrg-ccnxchunking-02</a>）の仕様に沿っています。</p>
+            
+            <p>以下との対応でみると以下の値であることがわかります：</p>
+            
+            <ul>
+                <li>Type = T_CHUNK (16)</li>
+                <li>Length = 1</li>
+                <li>Number = 0</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Chunk Number Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+--------------+
+   |           T_CHUNK             |             Length           |
+   +---------------+---------------+---------------+--------------+
+   |     variable length integer   /
+   +---------------+---------------+</pre>
+            </div>
+        </section>
+
+        <section id="conclusion">
+            <h2>まとめ</h2>
+            
+            <p>ここまででCefore 0.10.0gでやりとりされるInterestパケットのフォーマットがわかってきたことと思います。（その3）ではContent Objectパケットの中身をみていきたいと思います。</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Junichi FUNASAKA</p>
+    </footer>
+</body>
+</html>
