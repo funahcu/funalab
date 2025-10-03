@@ -226,12 +226,12 @@ PIT :
             
             <ul>
                 <li>Version = 1</li>
-                <li>Packet Type = PT_INTEREST (1)</li>
-                <li>PacketLength = 35</li>
-                <li>HopLimit = 32</li>
+                <li>Packet Type = PT_INTEREST (0)</li>
+                <li>PacketLength = 35 (0x23: 16*2+3=35)</li>
+                <li>HopLimit = 32 (0x20: 16*2=32)</li>
                 <li>Reserved = 0</li>
                 <li>Flags = 0</li>
-                <li>HeaderLength = 14</li>
+                <li>HeaderLength = 14 (0x0e: 14)</li>
             </ul>
             
             <div class="config-box">
@@ -256,7 +256,7 @@ PIT :
             <ul>
                 <li>option type = T_INTLIFE (1)</li>
                 <li>Length = 2 [bytes]</li>
-                <li>Lifetime = 2000 (07 d0 = 256*7 + 13*16 = 2000) [ms]</li>
+                <li>Lifetime = 2000 (0x07 0xd0: 256*7 + 13*16 = 2000) [ms]</li>
             </ul>
             
             <p>このinterestの有効期間は2秒間ですね。</p>
