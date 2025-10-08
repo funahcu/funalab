@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCNxとの戯れ（その3）</title>
+    <link rel="stylesheet" href="ccnx_tutorial_css.css">
+</head>
+<body>
+    <header>
+        <h1>CCNxとの戯れ（その3）</h1>
+        <p class="subtitle">Content Objectパケットの詳細解析</p>
+    </header>
+
+    <main>
+        <section id="introduction">
+            <h2>はじめに</h2>
+            <p>こちらの（その3）では、Interestに対して返ってくるContent Objectを観察してみます。</p>
+            
+            <div class="image-container">
+                <img src="content1.png" class="content-image" alt="Content Object packet overview">
+            </div>
+        </section>
+
+        <section id="fixed-header">
+            <h2>Fixed Headerの解析</h2>
+            
+            <p>Fixed headerについてはinterestと似た形なので、以下と対応を取ることで、それぞれの値の意味がわかります。</p>
+            
+            <ul>
+                <li>Version = 1</li>
+                <li>Packet Type = PT_CONTENT (1)</li>
+                <li>PacketLength = 78 (4*16 + 14 = 78)</li>
+                <li>Reserved = 0</li>
+                <li>Flags = 0</li>
+                <li>HeaderLength = 20</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Fixed Header Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |    Version    |  PT_CONTENT   |         PacketLength          |
+   +---------------+---------------+---------------+---------------+
+   |            Reserved           |     Flags     | HeaderLength  |
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+            
+            <p>ヘッダ長が20バイトなので、12バイトのオプションヘッダが続いていることがわかります。</p>
+        </section>
+
+        <section id="option-header">
+            <h2>Option Headerの解析</h2>
+            
+            <p>このHop-by-Hop TLV headersについては以下のように読むことができます。</p>
+            
+            <div class="image-container">
+                <img src="content2.png" class="content-image" alt="Cache Time header">
+            </div>
+            
+            <ul>
+                <li>Type: T_CACHETIME (2)</li>
+                <li>Length: 8 （固定）</li>
+                <li>Value: 1758776332729 (2025/9/25 13:58:52.729 JST)</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Cache Time Header Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |         T_CACHETIME           |               8               |
+   +---------------+---------------+---------------+---------------+
+   /                                                               /
+   /                    Recommended Cache Time                     /
+   /                                                               /
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+        </section>
+
+        <section id="message-tlv">
+            <h2>Message TLVの解析</h2>
+            
+            <div class="image-container">
+                <img src="content3.png" class="content-image" alt="Message TLV">
+            </div>
+            
+            <p>次に来るのがContent ObjectのMessage TLVになります。</p>
+            
+            <ul>
+                <li>MessageType = T_OBJECT (2)</li>
+                <li>MessageLength = 54</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Message TLV Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |         MessageType           |         MessageLength         |
+   +---------------+---------------+---------------+---------------+
+   | Name TLV                                                      |
+   +---------------+---------------+---------------+---------------+
+   / Optional PayloadType TLV                                      /
+   +---------------------------------------------------------------+
+   / Optional ExpiryTime TLV                                       /
+   +---------------------------------------------------------------+</pre>
+            </div>
+        </section>
+
+        <section id="name-tlv">
+            <h2>Name TLVの解析</h2>
+            
+            <div class="image-container">
+                <img src="content4.png" class="content-image" alt="Name TLV">
+            </div>
+            
+            <p>次に名前を示すName TLVが来ます。interestで要求された名前を返しているので、全く同じデータになります。</p>
+            
+            <ul>
+                <li>Type = T_NAME (0)</li>
+                <li>Length = 13</li>
+                <li>Type = T_NAME_SEGMENT (1)</li>
+                <li>Length = 4</li>
+                <li>Value = "test" (74 65 73 74)</li>
+                <li>Type = T_CHUNK (16)</li>
+                <li>Length = 1</li>
+                <li>Number = 0</li>
+            </ul>
+        </section>
+
+        <section id="expiry-time">
+            <h2>ExpiryTime TLVの解析</h2>
+            
+            <div class="image-container">
+                <img src="content5.png" class="content-image" alt="Expiry Time TLV">
+            </div>
+            
+            <p>次に来るのが Optional ExpiryTime TLVで、値は以下のように解釈できます。</p>
+            
+            <ul>
+                <li>Type = T_EXPIRY (6)</li>
+                <li>Length = 8</li>
+                <li>Value = 1758779632729 (2025/9/25 14:53:52.729 JST)</li>
+            </ul>
+        </section>
+
+        <section id="end-chunk">
+            <h2>EndChunkNumberの解析</h2>
+            
+            <div class="image-container">
+                <img src="content6.png" class="content-image" alt="End Chunk Number">
+            </div>
+            
+            <p>また続くEndChunkNumberもinternet draftに記載されているものです。下の図と照合することで、次の値であることがわかります。</p>
+            
+            <ul>
+                <li>Type = T_ENDCHUNK (12)</li>
+                <li>Length = 1</li>
+                <li>Value = 0</li>
+            </ul>
+            
+            <p>これで最終チャンクが0番であり、全体のパケット数が1となり、チャンク番号が0番であるこのパケットが最終であることがわかります。</p>
+            
+            <div class="config-box">
+                <h4>End Chunk Number Format</h4>
+                <pre>1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+--------------+
+   |         T_ENDCHUNK            |             Length           |
+   +---------------+---------------+---------------+--------------+
+   |     variable length integer   /
+   +---------------+---------------+</pre>
+            </div>
+        </section>
+
+        <section id="payload">
+            <h2>Payloadの解析</h2>
+            
+            <div class="image-container">
+                <img src="content7.png" class="content-image" alt="Payload">
+            </div>
+            
+            <p>最後にペイロードとしてファイルデータが入っています。以下のように解釈できます。</p>
+            
+            <ul>
+                <li>Type = T_PAYLOAD (1)</li>
+                <li>Length = 16</li>
+                <li>Value = "This is a test.\n" (16バイト)</li>
+            </ul>
+            
+            <div class="config-box">
+                <h4>Payload Format</h4>
+                <pre>1                  2                  3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +---------------+---------------+---------------+---------------+
+   |          T_PAYLOAD          |            Length            |
+   +---------------+---------------+---------------+---------------+
+   /                        Payload Contents                      /
+   +---------------+---------------+---------------+---------------+</pre>
+            </div>
+        </section>
+        <section id="conclusion">
+            <h2>まとめ</h2>
+
+            <p>ここまででContent Objectパケットの中身をみてきました。</p>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Junichi FUNASAKA</p>
+    </footer>
+</body>
+</html>
