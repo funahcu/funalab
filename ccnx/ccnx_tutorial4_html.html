@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCNxとの戯れ（その4）</title>
+    <link rel="stylesheet" href="ccnx_tutorial_css.css">
+</head>
+<body>
+    <header>
+        <h1>CCNxとの戯れ（その4）</h1>
+        <p class="subtitle">ストリーミング機能とSymbolic Interestの活用</p>
+    </header>
+
+    <main>
+        <section id="stream-commands">
+            <h2>cefputstream/cefgetstream</h2>
+            <p>Ceforeにおいて、cefputfileやcefgetfileがファイルという終端のはっきりしたデータを扱うのに対し、連続的に送出するストリームを対象としたコマンドとしてcefputstreamとcefgetstreamが用意されています。</p>
+            
+            <p>cefputstreamでは標準入力から入って来たデータを順にCCNxコンテンツオブジェクトに変換していきます。本来はffmpegなどで生成した動画ストリームを入力するのですが、ここでは動作を確認するためにファイルからcatで流し込んでみましょう。具体的には以下のサンプルのようになります。ここではcefgetstreamを後から起動してもよいように、わざと有効期間を長めに（-eと-tオプション）設定しています。動画の入力ではしばらくのあいだ起動したままにするコマンドですが、この例ではファイル終端までcatしてすぐに終わってしまいます。</p>
+
+            <div class="code-block">
+                <pre><code>cat /home/vagrant/work/repeat2000.txt | cefputstream ccnx:/repeat2000 -e 86400 -t 86400</code></pre>
+            </div>
+            
+            <p>入力されたCCNx URI（ここではccnx:/repeat2000）をストリームとして受信するにはcefgetstreamコマンドを使います。一般的な想定としてはffplayなどの動画再生ツールに流し込むのですが、ここでは説明しやすいようにファイルに書き込むことにします。この場合、cefgetfileと同じような機能になります。具体的なコマンド例としては以下になります。</p>
+            
+            <div class="code-block">
+                <pre><code>cefgetstream ccnx:/repeat2000 > /home/vagrant/work/output.dat</code></pre>
+            </div>
+            
+            <p>このときCefore間でやりとりされるCCNxパケットをキャプチャした結果をWiresharkでみていきます。</p>
+            <img src="ccnx4_1.png" class="content-image">
+            
+                <h4>最初のチャンク</h4>
+                <p>2000バイトのペイロードを1024バイトのチャンクで送るので、コンテンツオブジェクトは2個分になります。キャプチャ結果では1個目のチャンクを表示しています。cefputfile / cefgetfile でのやりとりと同じコンテンツオブジェクトが送られていることがわかります。</p>
+            
+            <img src="ccnx4_2.png" class="content-image">
+                <h4>最後のチャンク</h4>
+                <p>2個目のチャンクをキャプチャした結果です。基本的に cefputfile / cefgetfile のやりとりと同じですが、ひとつだけ異なるところがあります。実は T_ENDCHUNK が含まれていないのですね。したがって cefgetfile で取得しようとするとエラーになりますが、cefgetstream であればここまで取得したあとでタイムアウトするので、ファイルに書き込まれたデータはcefputstreamに流し込んだファイルの内容と同じになります。</p>
+            
+            <div class="info-box">
+                <p><strong>補足：</strong> cefputstream / cefgetstream については後で述べる Symbolic Interest と組み合わせると、本来なら動画ファイルのサイズに比例して増えてしまうInterestの数を削減できます。</p>
+            </div>
+        </section>
+
+        <section id="version-differences">
+            <h2>Cefore0.11.0とそれ以前の仕様の違い</h2>
+            
+            <p>先に述べたようにCefore 0.11.0 は Cefore 0.10.0gなどの過去のバージョンとは相互通信ができません。これはチャンクタイプやエンドチャンクタイプのコードが異なるからです。これらのバージョンが準拠しているinternet-draftは以下の通りです。</p>
+            
+            <h3>0.10.0g</h3>
+            <p><a href="https://datatracker.ietf.org/doc/html/draft-mosko-icnrg-ccnxchunking-02" target="_blank">draft-mosko-icnrg-ccnxchunking-02</a></p>
+            <div class="config-box">
+            <pre>+--------+---------+-----------------+------------------------------+
+|  Type  |  Abbrev |       Name      | Description                  |
++--------+---------+-----------------+------------------------------+
+| %x0010 | T_CHUNK |   Chunk Number  | The current Chunk Number, is |
+|        |         | (Section 3.1.1) | an unsigned integer in       |
+|        |         |                 | network byte order without   |
+|        |         |                 | leading zeros.  The value of |
+|        |         |                 | zero is represented as the   |
+|        |         |                 | single byte %x00.            |
++--------+---------+-----------------+------------------------------+
+Table 1: Name Types
++--------+------------+-----------------+---------------------------+
+|  Type  |   Abbrev   |       Name      | Description               |
++--------+------------+-----------------+---------------------------+
+| %x000C | T_ENDCHUNK |  EndChunkNumber | The last Chunk number, as |
+|        |            | (Section 3.1.1) | an unsigned integer in    |
+|        |            |                 | network byte order        |
+|        |            |                 | without leading zeros.    |
+|        |            |                 | The value of zero is      |
+|        |            |                 | represented as the single |
+|        |            |                 | byte %x00.                |
++--------+------------+-----------------+---------------------------+
+Table 2: Content Object Types</pre>
+            </div>
+            
+            <h3>0.11.0</h3>
+            <ul>
+                <li><a href="https://datatracker.ietf.org/doc/html/draft-mosko-icnrg-ccnxchunking-03" target="_blank">draft-mosko-icnrg-ccnxchunking-03</a></li>
+                <li><a href="https://datatracker.ietf.org/doc/draft-irtf-icnrg-ccnxchunking/01" target="_blank">draft-irtf-icnrg-ccnxchunking-01</a></li>
+            </ul>
+            <div class="config-box">
+            <pre>+========+=========+==========+==================================+
+|  Type  |  Abbrev |   Name   | Description                      |
++========+=========+==========+==================================+
+| %x0004 | T_CHUNK |  Chunk   | The current Chunk Number, is an  |
+|        |         |  Number  | unsigned integer in network byte |
+|        |         | (Section | order without leading zeros.     |
+|        |         |   3.1)   | The value of zero is represented |
+|        |         |          | as the single byte %x00.         |
++--------+---------+----------+----------------------------------+
+Table 1: ChunkNumber
++========+==============+================+========================+
+|  Type  |    Abbrev    |      Name      | Description            |
++========+==============+================+========================+
+| %x0007 |  T_ENDCHUNK  | EndChunkNumber | The last Chunk number, |
+|        |              | (Section 3.2)  | as an unsigned integer |
+|        |              |                | in network byte order  |
+|        |              |                | without leading zeros. |
+|        |              |                | The value of zero is   |
+|        |              |                | represented as the     |
+|        |              |                | single byte %x00.      |
++--------+--------------+----------------+------------------------+
+| %x000F | T_CHUNK_SIZE |   ChunkSize    | The fixed payload size |
+|        |              | (Section 3.2)  | of user data upto the  |
+|        |              |                | last chunk.  It must   |
+|        |              |                | be a positive integer. |
++--------+--------------+----------------+------------------------+
+Table 2: EndChunkNumber</pre>
+            </div>
+            
+            <div class="warning-box">
+                <h4>最新仕様について</h4>
+                <p>参考までにinternet-draftの最新版の仕様はCeforeに未適用です。<br>
+                <a href="https://datatracker.ietf.org/doc/html/draft-irtf-icnrg-ccnxchunking-02" target="_blank">https://datatracker.ietf.org/doc/html/draft-irtf-icnrg-ccnxchunking-02</a></p>
+            
+            <h3>CCNx Name Segment Type Namespace</h3>
+            <div class="config-box">
+                <pre>Code          Type name
+==============     ===============================
+%x0000         Reserved [RFC8609]
+%x0001         T_NAMESEGMENT [RFC8609]
+%x0002         T_IPID [RFC8609]
+%x0003         T_NONCE [RFC9508]
+%x0004         T_VERSION [I-D.ccnxcversioning]
+%x0005         T_CHUNK
+%x0006-%x000F      Unassigned
+%x0010-%x0013      Reserved [RFC8609]
+%x0014-0x0FFE      Unassigned
+%x0FFF             T_ORG [RFC8609]
+%x1000-0x1FFF      T_APP:00 - T_APP:4096 [RFC8609]
+%x2000-0xFFFF      Unassigned
+
+Figure 1: CCNx Name Segment Type Namespace</pre>
+            </div>
+            
+            <p>引用したFigure 1より、T_VERSIONが4番に入ったため、T_CHUNKは5に移動したようです。</p>
+            
+            <h3>CCNx Message Type Namespace</h3>
+            <div class="config-box">
+                <pre>Code          Type name
+==============     ===================
+%x0000         T_NAME [RFC8609]
+%x0001         T_PAYLOAD [RFC8609]
+%x0002         T_KEYIDRESTR [RFC8609]
+%x0003         T_OBJHASHRESTR [RFC8609]
+%x0005         T_PAYLDTYPE [RFC8609]
+%x0006         T_EXPIRY [RFC8609]
+%x0007         T_ENDCHUNK
+%x0008         T_CHUNK_SIZE
+%x0009-%x000C      Reserved [RFC8609]
+%x000D         T_DISC_REQ [RFC9344]
+%x000E         T_DISC_REPLY [RFC9344]
+%x0FFE         T_PAD [RFC8609]
+%x0FFF         T_ORG [RFC8609]
+%x1000-%x1FFF      Reserved [RFC8609]
+
+Figure 2: CCNx Message Type Namespace</pre>
+            </div>
+            
+            <p>引用したFigure 2より、T_ENDCHUNK は最新仕様でも7番のままですが、T_CHUNK_SIZEが8番に変更になっています。</p>
+            </div>
+            
+            <h3>バージョン別のコード値</h3>
+                <h4>0.10.0gでのコード値</h4>
+                <ul>
+                    <li>T_CHUNK: 16</li>
+                    <li>T_ENDCHUNK: 12</li>
+                </ul>
+            
+                <h4>0.11.0でのコード値</h4>
+                <ul>
+                    <li>T_CHUNK: 4</li>
+                    <li>T_ENDCHUNK: 7</li>
+            </div>
+            
+            <p>それぞれ仕様が異なるので、Wiresharkでキャプチャする場合も対応するLUAファイルを利用する必要があります。</p>
+            
+            <div class="info-box">
+                <p><strong>Wireshark用LUAファイル</strong></p>
+                <ul>
+                    <li>Cefore 0.10.0g対応: <a href="https://github.com/cefore/cefore/blob/bc7f84052025a5dd1c198c0d31a49ca58df71733/apps/wireshark/cefore.lua" target="_blank">cefore.lua</a></li>
+                    <li>Cefore 0.11.0対応: <a href="https://github.com/cefore/cefore/blob/master/apps/wireshark/wireshark4cefore.lua" target="_blank">wireshark4cefore.lua</a></li>
+                </ul>
+            </div>
+            
+            <h3>実際のパケット確認</h3>
+            <p>これを実際のパケットで確認しましょう。Cefore 0.11.0 で発行されるCCNxパケット（content object）をキャプチャした結果を見ていきます。</p>
+            
+            <img src="ccnx4_3.png" class="content-image">
+                <h4>最初のチャンクのキャプチャ</h4>
+                <p>こちらが最初のチャンクであり、T_CHUNKをみると確かに4になっていることがわかります。</p>
+            
+            <img src="ccnx4_4.png" class="content-image">
+                <h4>最後のチャンクのキャプチャ</h4>
+                <p>こちらが最後のチャンクのキャプチャ結果です。T_CHUNKに加えてT_ENDCHUNKが含まれており、これも確かに7になっています。</p>
+        </section>
+
+        <section id="symbolic-interest">
+            <h2>NICT独自拡張のSMI (Symbolic Interest)</h2>
+            
+            <p>Ceforeを開発しているNICTではCCNxの独自拡張としてSymbolic Interestを提案し、Ceforeに実装しています。Symbolic Interest、略してSMIは通常のInterest (Regular Interest: RGI) と異なり、多くのチャンクで構成されているコンテンツであってもチャンク番号を指定せずにコンテンツを要求します。これは多くのチャンクから構成されているサイズの大きなファイルの取得において、Interestの数を削減する効果が期待できます。</p>
+            
+            <h3>SMIの発行方法</h3>
+            <p>それではSMIを発行してみましょう。ツールのヘルプなどには出てこないのですが、cefgetfileやcefgetstreamに -z オプションで有効期間をつけることでSMIを発行できます。</p>
+            
+            <div class="code-block">
+                <pre><code>cefgetfile ccnx:/100KB -f /home/vagrant/work/output.dat -z 2</code></pre>
+            </div>
+            
+            <p>この例だと2秒の有効期間が設定されます。</p>
+            
+            <div class="note-box">
+                <h4>-z オプションの詳細</h4>
+                <p>Ceforeのコードを読むと -z をコマンドラインの最後に指定するとデフォルトの4秒が指定されるようです。これは後方互換性なのかよくわかりません。一方、-z sg という指定もあるのですが、atoi()で0に変換された結果、SGIのように個々のinterestに対するコンテンツを要求しないことを明示できるようです（RFC8609）。</p>
+            </div>
+            
+            <p>SMIがpending interest tableに入っている状態でcontent objectが入ってくることでコンテンツが送信されます。</p>
+            
+            <p>上記cefgetfileのSMIが発行中にcefputfileやcefputstreamを実行するようにしましょう。</p>
+            
+            <div class="code-block">
+                <pre><code>cefputfile ccnx:/100KB -f /home/vagrant/work/100KB-file.dat</code></pre>
+            </div>
+            
+            <img src="ccnx4_5.png" class="content-image">
+            <h3>SMIのパケット構造</h3>
+                <h4>SMI (Symbolic Interest) のキャプチャ</h4>
+                <p>SMIはNICTの独自拡張なので、T_ORGにより内容が記述されます。形式はRFC8609のOrganization-Specific TLVとして規定されています。以下とのT_ORGのフォーマットとの対応でそれぞれの値は次のようになります。</p>
+                <ul>
+                    <li>Type: T_ORG (0xffff)</li>
+                    <li>Length: 7 (3 + value length (4))</li>
+                    <li>PEN[0][1][2] (Enterprise Number): 0x00c96c</li>
+                    <li>T_SYMBOLIC (0001)</li>
+                    <li>T_LONGLIFE (0002)</li>
+                </ul>
+            
+            <div class="config-box">
+                <h4>T_ORGフォーマット</h4>
+                <pre>1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++---------------+---------------+---------------+---------------+
+|             T_ORG             |     Length (3+value length)   |
++---------------+---------------+---------------+---------------+
+|   PEN[0]      |    PEN[1]     |     PEN[2]    |               /
++---------------+---------------+---------------+               +
+/                  Vendor Specific Value                        /
++---------------+---------------+---------------+---------------+</pre>
+            </div>
+            
+            <p>ここでIANAで指定されたNICTの番号 51564 (0xc96c)が指定されていることがわかります。<br>
+            <a href="https://www.iana.org/assignments/enterprise-numbers/?q=51564" target="_blank">https://www.iana.org/assignments/enterprise-numbers/?q=51564</a></p>
+            
+            <p>T_SYMBOLICでSMIを指定し、T_LONGLIFEでストリーミング用途に合うように通常のInterestより長い有効期間を指定しています。</p>
+            
+            <img src="ccnx4_6.png" class="content-image">
+            <h4>SMIに対するContent Object</h4>
+            <p>こちらがSMIに対するチャンク0のcontent objectをキャプチャした例です。特にSMIに対応するような特別な特徴はなく、チャンク0が要求されたときと同様のcontent objectが送信されています。</p>
+            <p>※Cefore0.11.0で実行しているので、T_CHUNKは4になっています。</p>
+            
+            <img src="ccnx4_7.png" class="content-image">
+            <h4>SMIの効果</h3>
+            <p>SMIなのでInterestが多数発行されることがないのが特徴です。Wiresharkの画面をみても、連続してcontent objectが送信されており、Interestが発行されていないことがわかります。%99までinterestなしで一気に送られてきていますね。このようにinterest発行の負荷を削減できるのがSMIのメリットです。</p>
+        </section>
+
+        <section id="references">
+            <h2>こちらも参考になります</h2>
+            
+            <p>Ceforeとその使い方については以下のリンク先も参考になると思います。</p>
+            
+            <ul>
+                <li><a href="https://cef.o0i.es/docs/" target="_blank">ドキュメント | Cefore Unofficial Wiki</a></li>
+                <li><a href="https://zenn.dev/k4e/articles/k4e-cefore-on-ubuntu" target="_blank">Ubuntu 24.04 LTS にCeforeを導入する方法</a></li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Junichi FUNASAKA</p>
+    </footer>
+</body>
+</html>
