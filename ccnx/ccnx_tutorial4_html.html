@@ -114,7 +114,7 @@ Table 2: EndChunkNumber</pre>
             
             <div class="warning-box">
                 <h4>最新仕様について</h4>
-                <p>参考までにinternet-draftの最新版の仕様はCeforeに未適用です。<br>
+                <p>参考までにinternet-draftの最新版の仕様はCefore v0.11.0に未適用です。これは2025年12月はじめ時点の情報でしたが、後に注記するように2025年12月15日にバージョン0.12.0がリリースされています。<br>
                 <a href="https://datatracker.ietf.org/doc/html/draft-irtf-icnrg-ccnxchunking-02" target="_blank">https://datatracker.ietf.org/doc/html/draft-irtf-icnrg-ccnxchunking-02</a></p>
             
             <h3>CCNx Name Segment Type Namespace</h3>
@@ -162,6 +162,7 @@ Figure 2: CCNx Message Type Namespace</pre>
             </div>
             
             <p>引用したFigure 2より、T_ENDCHUNK は最新仕様でも7番のままですが、T_CHUNK_SIZEが8番に変更になっています。</p>
+            <p>※2025年12月15日リリースの0.12.0ではT_CHUNKは5に更新されました。ただ、T_ENDCHUNKが8、T_CHUNK_SIZEが9となっていて、こちらのinterenet-draftとずれているところもあるので引き続き注視する必要があると思います。</p>
             </div>
             
             <h3>バージョン別のコード値</h3>
@@ -183,7 +184,8 @@ Figure 2: CCNx Message Type Namespace</pre>
                 <p><strong>Wireshark用LUAファイル</strong></p>
                 <ul>
                     <li>Cefore 0.10.0g対応: <a href="https://github.com/cefore/cefore/blob/bc7f84052025a5dd1c198c0d31a49ca58df71733/apps/wireshark/cefore.lua" target="_blank">cefore.lua</a></li>
-                    <li>Cefore 0.11.0対応: <a href="https://github.com/cefore/cefore/blob/master/apps/wireshark/wireshark4cefore.lua" target="_blank">wireshark4cefore.lua</a></li>
+                    <li>Cefore 0.11.0対応: <a href="https://github.com/cefore/cefore/blob/v0.11.0/apps/wireshark/wireshark4cefore.lua" target="_blank">wireshark4cefore.lua</a></li>
+                    <li>Cefore 0.12.0対応: <a href="https://github.com/cefore/cefore/blob/master/apps/wireshark/wireshark4cefore.lua" target="_blank">wireshark4cefore.lua</a></li>
                 </ul>
             </div>
             
@@ -229,9 +231,9 @@ Figure 2: CCNx Message Type Namespace</pre>
             <img src="ccnx4_5.png" class="content-image">
             <h3>SMIのパケット構造</h3>
                 <h4>SMI (Symbolic Interest) のキャプチャ</h4>
-                <p>SMIはNICTの独自拡張なので、T_ORGにより内容が記述されます。形式はRFC8609のOrganization-Specific TLVとして規定されています。以下とのT_ORGのフォーマットとの対応でそれぞれの値は次のようになります。</p>
+                <p>SMIはNICTの独自拡張なので、T_ORGにより内容が記述されます。形式はRFC8609のOrganization-Specific TLVとして規定されています。以下とT_ORGのフォーマットとの対応でそれぞれの値は次のようになります。</p>
                 <ul>
-                    <li>Type: T_ORG (0xffff)</li>
+                    <li>Type: T_ORG (0x0fff)</li>
                     <li>Length: 7 (3 + value length (4))</li>
                     <li>PEN[0][1][2] (Enterprise Number): 0x00c96c</li>
                     <li>T_SYMBOLIC (0001)</li>
