@@ -25,8 +25,9 @@
             <p>cefputstreamでは標準入力から入って来たデータを順にCCNxコンテンツオブジェクトに変換していきます。本来はffmpegなどで生成した動画ストリームを入力するのですが、ここでは動作を確認するためにファイルからcatで流し込んでみましょう。具体的には以下のサンプルのようになります。ここではcefgetstreamを後から起動してもよいように、わざと有効期間を長めに（-eと-tオプション）設定しています。動画の入力ではしばらくのあいだ起動したままにするコマンドですが、この例ではファイル終端までcatしてすぐに終わってしまいます。</p>
 
             <div class="code-block">
-                <pre><code>cat /home/vagrant/work/repeat2000.txt | cefputstream ccnx:/repeat2000 -e 86400 -t 86400</code></pre>
+                <pre><code>cat /home/vagrant/work/repeat2000.txt | cefputstream ccnx:/repeat2000 -e 86400 -t 10000</code></pre>
             </div>
+            <p>(注）-tオプションの最大値は65535なのですが、86400を指定してしまっていましたので修正しています。</p>
             
             <p>入力されたCCNx URI（ここではccnx:/repeat2000）をストリームとして受信するにはcefgetstreamコマンドを使います。一般的な想定としてはffplayなどの動画再生ツールに流し込むのですが、ここでは説明しやすいようにファイルに書き込むことにします。この場合、cefgetfileと同じような機能になります。具体的なコマンド例としては以下になります。</p>
             
@@ -286,7 +287,8 @@ Figure 2: CCNx Message Type Namespace</pre>
     </main>
 
     <footer>
-        <p>&copy; 2025 Junichi FUNASAKA</p>
+        <p>&copy; 2025-2026 Junichi FUNASAKA</p>
+        <p>ご意見がございましたら広島市立大学舟阪までお願いいたします。</p>
     </footer>
 </body>
 </html>
