@@ -224,7 +224,7 @@ Figure 2: CCNx Message Type Namespace</pre>
             
             <div class="note-box">
                 <h4>-z オプションの詳細</h4>
-                <p>Ceforeのコードを読むと -z をコマンドラインの最後に指定するとデフォルトの4秒が指定されるようです。これは後方互換性なのかよくわかりません。一方、-z sg という指定もあるのですが、atoi()で0に変換された結果、SGIのように個々のinterestに対するコンテンツを要求しないことを明示できるようです（RFC8609）。</p>
+                <p>Ceforeのコードを読むと -z をコマンドラインの最後に指定するとデフォルトの4秒が指定されるようです。これは後方互換性なのかよくわかりません。一方、-z sg という指定もあるのですが、atoi()で0に変換された結果、SMIのように個々のinterestに対するコンテンツを要求しないことを明示できるようです（RFC8609）。</p>
             </div>
             
             <p>SMIがpending interest tableに入っている状態でcontent objectが入ってくることでコンテンツが送信されます。</p>
@@ -288,6 +288,7 @@ Figure 2: CCNx Message Type Namespace</pre>
     </main>
 
     <footer>
+        <p><a href="index.html">CCNxとの戯れシリーズ</a>
         <p>&copy; 2025-2026 Junichi FUNASAKA</p>
         <p>ご意見がございましたら広島市立大学舟阪までお願いいたします。</p>
     </footer>
