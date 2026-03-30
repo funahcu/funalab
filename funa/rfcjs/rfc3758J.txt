@@ -1,0 +1,1553 @@
+
+
+
+
+
+
+Network Working Group                                         R. Stewart
+Request for Comments: 3758                                    M. Ramalho
+Category: Standards Track                            Cisco Systems, Inc.
+                                                                  Q. Xie
+                                                          Motorola, Inc.
+                                                               M. Tuexen
+                                      Univ. of Applied Sciences Muenster
+                                                               P. Conrad
+                                                  University of Delaware
+                                                                May 2004
+
+
+              Stream Control Transmission Protocol (SCTP)
+                     Partial Reliability Extension
+ストリーム制御送信プロトコル(SCTP)の部分的な信頼性のための拡張
+
+Status of this Memo
+このメモのステータス
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+この文書はインターネットコミュニティのためのインターネット標準トラックプロトコルを記述するものであり、改善のための議論や提案を要求するものである。標準化状態およびこのプロトコルの状態については"Internet Official Protocol Standards" (STD 1)の最新バージョンを参照していただきたい。このメモの配布に制限はない。
+
+Copyright Notice
+著作権通知
+
+   Copyright (C) The Internet Society (2004).  All Rights Reserved.
+
+(日本語訳について)-----------------------------------------------------
+この日本語訳は舟阪淳一が個人的に訳したものです。誤訳も含まれていると
+思いますので、ご利用の際は注意してください。また不備をみつけられましたら
+ご連絡ください。この注意書きを残していれば、自由に改変、再配布できる
+ものとします。
+連絡先 http://mary.net.info.hiroshima-cu.ac.jp/cgi-bin/mailaccept.pl
+-----------------------------------------------------------------------
+
+Abstract
+概要
+
+   This memo describes an extension to the Stream Control Transmission
+   Protocol (SCTP) that allows an SCTP endpoint to signal to its peer
+   that it should move the cumulative ack point forward.  When both
+   sides of an SCTP association support this extension, it can be used
+   by an SCTP implementation to provide partially reliable data
+   transmission service to an upper layer protocol.  This memo describes
+   the protocol extensions, which consist of a new parameter for INIT
+   and INIT ACK, and a new FORWARD TSN chunk type, and provides one
+   example of a partially reliable service that can be provided to the
+   upper layer via this mechanism.
+
+このメモはSCTP端末が累積確認応答ポイントを前に進めるように相手に指示することを可能とするためのストリーム制御伝送プロトコル(SCTP)の一つの拡張を記述する。あるSCTPアソシエーションの両側がこの拡張をサポートしているとき、SCTP実装はこの機能を、上位層に対して部分的に信頼性のあるデータ伝送サービス(partially reliable data transmission service)を提供するために利用できる。このメモはプロトコル拡張、すなわちINITとINIT ACKの新しいパラメータと新しいFORWARD TSNというチャンク型から成る拡張、について記述し、このメカニズムを通して上位層に提供することのできる部分的に信頼性のあるサービスの一つの例を紹介する。
+
+
+
+
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                     [Page 1]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  2
+       1.1.  Overview of Protocol Extensions. . . . . . . . . . . . .  2
+       1.2.  Overview of New Services Provided to the Upper Layer . .  3
+       1.3.  Benefits of PR-SCTP  . . . . . . . . . . . . . . . . . .  4
+   2.  Conventions. . . . . . . . . . . . . . . . . . . . . . . . . .  5
+   3.  Protocol Changes to support PR-SCTP .  . . . . . . . . . . . .  5
+       3.1.  Forward-TSN-Supported Parameter For INIT and INIT ACK. .  5
+       3.2.  Forward Cumulative TSN Chunk Definition (FORWARD TSN). .  5
+       3.3.  Negotiation of Forward-TSN-Supported parameter . . . . .  7
+             3.3.1. Sending Forward-TSN-Supported param in INIT . . .  7
+             3.3.2. Receipt of Forward-TSN-Supported parameter in
+                    INIT or INIT-ACK. . . . . . . . . . . . . . . . .  7
+             3.3.3. Receipt of Op. Error for Forward-TSN-Supported
+                    Param . . . . . . . . . . . . . . . . . . . . . .  8
+       3.4.  Definition of "abandoned" in the context of PR-SCTP. . .  8
+       3.5.  Sender Side Implementation of PR-SCTP. . . . . . . . . .  9
+       3.6.  Receiver Side Implementation of PR-SCTP. . . . . . . . . 12
+   4.  Services provided by PR-SCTP to the upper layer. . . . . . . . 14
+       4.1.  PR-SCTP Service Definition for "timed reliability" . . . 15
+       4.2.  PR-SCTP Association Establishment. . . . . . . . . . . . 16
+       4.3.  Guidelines for defining other PR-SCTP Services . . . . . 17
+       4.4.  Usage Notes. . . . . . . . . . . . . . . . . . . . . . . 19
+   5.  Variables. . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+   6.  Acknowledgments. . . . . . . . . . . . . . . . . . . . . . . . 19
+   7.  Security Considerations. . . . . . . . . . . . . . . . . . . . 19
+   8.  IANA Considerations. . . . . . . . . . . . . . . . . . . . . . 20
+   9.  References . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+       9.1.  Normative References . . . . . . . . . . . . . . . . . . 20
+       9.2.  Informative References . . . . . . . . . . . . . . . . . 20
+   10. Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . 20
+   11. Full Copyright Statement . . . . . . . . . . . . . . . . . . .
+
+1.  Introduction
+1.  はじめに
+
+   This memo describes an extension to the Stream Control Transmission
+   Protocol (SCTP) RFC 2960 [2] that allows an SCTP sender to signal to
+   its peer that it should no longer expect to receive one or more DATA
+   chunks.
+
+このメモはSCTP送信者が相手に対して一つ以上のDATAチャンクをもう待たなくてよいと通知することを可能とするためのストリーム制御伝送プロトコル(SCTP) RFC 2960 [2]の一つの拡張を記述する。
+
+1.1.  Overview of Protocol Extensions
+1.1.  プロトコル拡張の概観
+
+   The protocol extension described in this document consists of two new
+   elements:
+
+この文書で記述するプロトコル拡張は二つの新しい要素から成る:
+
+   1. a single new parameter in the INIT/INIT-ACK exchange that
+      indicates whether the endpoint supports the extension
+
+1. 端末がこの拡張をサポートしているかどうか示すためのINIT/INIT-ACK交換の中で用いる新しいパラメータ
+
+Stewart, et al.             Standards Track                     [Page 2]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   2. a single new chunk type, FORWARD TSN, that indicates that the
+      receiver should move its cumulative ack point forward (possibly
+      skipping past one or more DATA chunks that may not yet have been
+      received and/or acknowledged.)
+
+2. 受信者が自身の累積確認応答ポイントを前へ進める(おそらくはまだ受信または確認応答がなされていない過去の一つ以上のDATAチャンクをとばす)べきであると指示するFORWARD TSNという新しいチャンク型
+
+1.2.  Overview of New Services Provided to the Upper Layer
+1.2.  上位層に提供される新しいサービスの概観
+
+   When this extension is supported by both sides of an SCTP
+   association, it can be used to provide partially reliable transport
+   service over an SCTP association.  We define partially reliable
+   transport service as a service that allows the user to specify, on a
+   per message basis, the rules governing how persistent the transport
+   service should be in attempting to send the message to the receiver.
+
+この拡張があるSCTPアソシエーションの両端でサポートされているとき、SCTPアソシエーション上で部分的に信頼性のある(partially reliable)トランスポートサービスを提供することができる。我々は部分的に信頼性のある(partially reliable)トランスポートサービスを、トランスポートサービスがそのメッセージを受信者に送るのにどれだけ固執するかを支配するルールをユーザがメッセージごとに指定することができるようにするサービスと定義する。
+
+   One example of partially reliable service is specified in this
+   document, namely a "timed reliability" service.  This service allows
+   the service user to indicate a limit on the duration of time that the
+   sender should try to transmit/retransmit the message (this is a
+   natural extension of the "lifetime" parameter already in the base
+   protocol).
+
+この文書では部分的に信頼性のある(partially reliable)サービスの一例、すなわち"timed reliability"サービスを記述する。このサービスはユーザに対し、送信者がメッセージを送信または再送信しようと試み続けるべき時間に期限を示すことを可能にするものである(これは元となるプロトコルにすでに含まれている"寿命"パラメータの自然な拡張のひとつである)。
+
+   In addition to this example, we will also show that defining the
+   semantics of a particular partially reliable service involves two
+   elements, namely:
+
+この例に加えて、特定の部分的に信頼性のあるサービスの意味を定義することは2つの要素を含むことを示す。2つの要素とは:
+
+   1. how the service user indicates the level of reliability required
+      for a particular message, and
+
+1. サービスを受けるユーザが特定のメッセージに必要な信頼性のレベルをどのように示すか。
+
+   2. how the sender side implementation uses that reliability level to
+      determine when to give up on further retransmissions of that
+      message.
+
+2. 送信側の実装がそのメッセージのこれ以上の再送をいつあきらめるかを決めるために、この信頼性レベルをどのように用いるか。
+
+   Note that other than the fact that the FORWARD-TSN chunk is required,
+   neither of these two elements impacts the "on-the-wire" protocol;
+   only the API and the sender side implementation are affected by the
+   way in which the service is defined to the upper layer.  Therefore,
+   in principle, it is feasible to implement many varieties of partially
+   reliable services in a particular SCTP implementation without
+   changing the on-the-wire protocol.  Also, the SCTP receiver does not
+   necessarily need to know which semantics of partially reliable
+   service are being used by the sender, since the receiver's only role
+   is to correctly interpret FORWARD TSN chunks, thereby skipping past
+   messages that the sender has decided to no longer transmit (or
+   retransmit).
+
+FORWARD-TSNチャンクが必要となる事実をのぞいて、これらの二つの要素はどちらも有線上の("on-the-wire")プロトコルには影響を与えないことに注意すること。すなわち、このサービスが上位層に対してどのように定義されるかによって影響を受けるのはAPIと送信側の実装だけである。したがって原理的には、特定のSCTP実装において有線上のプロトコルを変更することなく部分的に信頼性のあるサービスの多くのバリエーションを実装することができる。またSCTP受信者は送信者がどのような意味づけで部分的に信頼性のあるサービスを利用しているかを必ずしも知る必要はない。なぜなら受信者にとっての唯一の役割は正しくFORWARD TSNチャンクを解釈することであり、これは送信者がもう送信(または再送)しなくてもよいと判断した過去のメッセージを飛ばすことになる。
+
+   Nevertheless, it is recommended that a limited number of standard
+   definitions of partially reliable services be standardized by the
+   IETF so that the designers of IETF application layer protocols can
+
+
+
+Stewart, et al.             Standards Track                     [Page 3]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   match the requirements of their upper layer protocols to standard
+   service definitions provided by a particular SCTP implementation.
+   One such definition, "timed reliability", is included in this
+   document.  Given the extensions proposed in this document, other
+   definitions may be standardized as the need arises without further
+   changes to the on-the-wire protocol.
+
+しかしながら、IETFのアプリケーション層プロトコルの設計者が上位層プロトコルの要求と特定のSCTP実装で提供される標準サービス定義を合わせられるように、部分的に信頼性のあるサービスの限られた数の標準定義をIETFが標準化しておくことが推奨される。このような定義のひとつとして、この文書は"timed reliability"を含む。この文書で提案される拡張が与えられることによって、他の定義も必要性が出てくるごとに有線上のプロトコルにさらなる変更を加えることなく標準化されるだろう。
+
+1.3.  Benefits of PR-SCTP
+1.3.  PR-SCTPのご利益
+
+   Hereafter, we use the notation "Partial Reliable Stream Control
+   Transmission Protocol (PR-SCTP)" to refer to the SCTP protocol,
+   extended as defined in this document.
+
+以降では、この文書で定義する拡張されたSCTPプロトコルを指して「部分的に信頼性のあるストリーム制御伝送プロトコル(PR-SCTP)」という表記を用いる。
+
+   The following are some of the advantages for integrating partially
+   reliable data service into SCTP, i.e., benefits of PR-SCTP:
+
+部分的に信頼性のあるデータサービスをSCTPに組み込む利点、すなわちPR-SCTPのご利益のいくつかを以下に示す:
+
+   1. Some application layer protocols may benefit from being able to
+      use a single SCTP association to carry both reliable content, --
+      such as text pages, billing and accounting information, setup
+      signaling -- and unreliable content, e.g., state that is highly
+      sensitive to timeliness, where generating a new packet is more
+      advantageous than transmitting an old one [3].
+
+1. いくつかのアプリケーション層プロトコルは、信頼性の必要なコンテンツ、-- テキストページ、請求や課金の情報、セットアップの制御のような --、と信頼性が必ずしも必要でないコンテンツ、例えば古いパケットを送るよりも新しいパケットを生成する方が利点のある状況における即時性に極めて敏感な状態情報、の両方を一つのSCTPアソシエーションを使って送ることができると都合がいい[3]。
+
+   2. Partially reliable data traffic carried by PR-SCTP will enjoy the
+      same communication failure detection and protection capabilities
+      as the normal reliable SCTP data traffic does.  This includes the
+      ability to quickly detect a failed destination address, fail-over
+      to an alternate destination address, and be notified if the data
+      receiver becomes unreachable.
+
+2. PR-SCTPによって運ばれる部分的に信頼性のあるデータトラフィックは、通常の信頼性のあるデータトラフィックと同じコミュニケーション障害の検出と防御の機能の恩恵を受けるだろう。これは障害の起きた宛先アドレスの即座の検出、代替宛先アドレスへのフェイルオーバ、およびデータ受信者が到達不可能になったときの通知、といったことが可能になることを含む。
+
+   3. In addition to providing unordered, unreliable data transfer as
+      UDP does, PR-SCTP can provide ordered, unreliable data transfer
+      service.
+
+3. UDPのように順序通りでなく、信頼性もないデータ転送を提供することに加え、PR-SCTPは順序通りながら信頼性のないデータ転送サービスを提供できる。
+
+   4. PR-SCTP employs the same congestion control and congestion
+      avoidance for all data traffic, whether reliable or partially
+      reliable - this is very desirable since SCTP enforces TCP-
+      friendliness (unlike UDP.)
+
+4. PR-SCTPは全てのデータトラフィックに対し、信頼性がある(reliable)か部分的に信頼性がある(partially reliable)かにかかわらず同じ輻輳制御と輻輳回避を採用している -- SCTPは(UDPと異なり)TCP親和性を要求されるので、これはとても望ましいことである。 
+
+   5. Because of the chunk bundling function of SCTP, reliable and
+      unreliable messages can be multiplexed over a single PR-SCTP
+      association.  Therefore, the number of IP datagrams (and hence the
+      network overhead) can be reduced instead of having to send these
+      different types of data using separate protocols.  Additionally,
+      this multiplexing allows for port savings versus using different
+      ports for reliable and unreliable connections.
+
+5. SCTPにチャンクバンドリング機能があるので、信頼性のあるメッセージと信頼性が必ずしもないメッセージは単一のPR-SCTPアソシエーションの上で多重化することができる。そのため、これらの異なる型のデータを別々のプロトコルを用いて送る必要がなくなることで、IPデータグラムの数(したがってネットワークオーバーヘッド)を減らすことができる。さらにこの多重化は、信頼性のあるコネクションと信頼性の必ずしもないコネクションに別々のポートを使うよりもポートの節約を可能とする。
+
+
+
+Stewart, et al.             Standards Track                     [Page 4]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+2.  Conventions
+2.  慣行事項
+
+   The keywords MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD,
+   SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL, when
+   they appear in this document, are to be interpreted as described in
+   BCP 14, RFC 2119 [1].
+
+この文書内にMUST、MUST NOT、REQUIRED、SHALL、SHALL NOT、SHOULD、SHOULD NOT、RECOMMENDED、NOT RECOMMENDED、MAY、およびOPTIONALというキーワードが出てきたときは、BCP 14、RFC 2119 [1]で記述されているように解釈するものとする。
+
+   Comparisons and arithmetic on Transport Sequence Numbers (TSNs) are
+   governed by the rules in Section 1.6 of RFC 2960 [2].
+
+転送シーケンス番号(TSNs)に関する比較と算術はRFC 2960[2]のSection 1.6にあるルールに従う。
+
+3.  Protocol Changes to support PR-SCTP
+3.  PR-SCTPをサポートするためのプロトコル変更
+
+3.1.  Forward-TSN-Supported Parameter For INIT and INIT ACK
+3.1.  INITおよびINIT ACKにおけるForward-TSN-Supportedパラメータ
+
+   The following new OPTIONAL parameter is added to the INIT and INIT
+   ACK chunks.
+
+以下の新しいOPTIONALパラメータをINITとINIT ACKチャンクに追加する。
+
+   Parameter Name                       Status     Type Value
+   -------------------------------------------------------------
+   Forward-TSN-Supported               OPTIONAL    49152 (0xC000)
+
+   At the initialization of the association, the sender of the INIT or
+   INIT ACK chunk MAY include this OPTIONAL parameter to inform its peer
+   that it is able to support the Forward TSN chunk (see Section 3.3 for
+   further details).  The format of this parameter is defined as
+   follows:
+
+アソシエーションの初期化において、INITまたはINIT ACKチャンクの送信者はForward TSNチャンクをサポート可能である(より詳しくは3.3節参照)ことを相手に知らせるために、このOPTIONALパラメータを含めてよい(MAY)。このパラメータのフォーマットを以下のように定義する:
+
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |    Parameter Type = 49152     |  Parameter Length = 4         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Type: 16 bit u_int
+
+      49152, indicating Forward-TSN-Supported parameter
+
+49152、これはForward-TSN-Supportedパラメータを示す数字である。
+
+   Length: 16 bit u_int
+
+      Indicates the size of the parameter, i.e., 4.
+
+このパラメータのサイズを示す、すなわち4。
+
+3.2 Forward Cumulative TSN Chunk Definition (FORWARD TSN)
+3.2 Forward累積TSNチャンクの定義 (FORWARD TSN)
+
+   The following new chunk type is defined:
+
+以下の新しいチャンク型を定義する。
+
+   Chunk Type    Chunk Name
+   ------------------------------------------------------
+   192 (0xC0)    Forward Cumulative TSN (FORWARD TSN)
+
+
+
+
+Stewart, et al.             Standards Track                     [Page 5]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   This chunk shall be used by the data sender to inform the data
+   receiver to adjust its cumulative received TSN point forward because
+   some missing TSNs are associated with data chunks that SHOULD NOT be
+   transmitted or retransmitted by the sender.
+
+このチャンクはデータ送信者が、いくつかの失われたTSNが送信者によって送信または再送するべきでない(SHOULD NOT)とされたデータチャンクに結びつけられているので、データ受信者にその累積受信TSNポイントを数字の大きい方へ調節するように知らせるために使われる。
+
+   Forward Cumulative TSN chunk has the following format:
+
+Forward Cumulative TSNチャンクは以下のフォーマットである:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Type = 192  |  Flags = 0x00 |        Length = Variable      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                      New Cumulative TSN                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Stream-1              |       Stream Sequence-1       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   \                                                               /
+   /                                                               \
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Stream-N              |       Stream Sequence-N       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Chunk Flags:
+
+     Set to all zeros on transmit and ignored on receipt.
+
+送信時は全てのビットを0とし受信時は無視する。
+
+   New Cumulative TSN: 32 bit u_int
+
+    This indicates the new cumulative TSN to the data receiver.  Upon
+    the reception of this value, the data receiver MUST consider
+    any missing TSNs earlier than or equal to this value as received,
+    and stop reporting them as gaps in any subsequent SACKs.
+
+このフィールドは新しい累積TSNをデータ受信者に示す。この値の受信にあたっては、データ受信者はこの値以前のどの失われたTSNも受信したとみなし、以降のいずれのSACKにおいてもそれらをギャップとして報告することを停止しなければならない(MUST)。
+
+   Stream-N: 16 bit u_int
+
+    This field holds a stream number that was skipped by this
+    FWD-TSN.
+
+このフィールドはこのFWD-TSNによって飛ばされるストリーム番号を格納する。
+
+   Stream Sequence-N: 16 bit u_int
+
+    This field holds the sequence number associated with the stream
+    that was skipped.  The stream sequence field holds the largest
+    stream sequence number in this stream being skipped.  The receiver
+    of the FWD-TSN's can use the Stream-N and Stream Sequence-N fields
+    to enable delivery of any stranded TSN's that remain on the stream
+    re-ordering queues.  This field MUST NOT report TSN's corresponding
+    to DATA chunks that are marked as unordered.  For ordered DATA
+    chunks this field MUST be filled in.
+
+このフィールドは飛ばされたストリームに関連するシーケンス番号を格納する。このストリームシーケンスフィールドはこのストリームの中で飛ばされる最大のストリームシーケンス番号を格納する。FWD-TSNの受信者はこのStream-NとStream Sequence-Nフィールドを使って、ストリームの並びかえキューに残っている(訳注: 前のTSNがぬけているために)立ち往生しているTSNの(訳注: 上位層への)配送を可能にする。このフィールドは非順序とマークされているDATAチャンクに対応するTSNを報告してはならない(MUST NOT)。順序通りのDATAチャンクについてはこのフィールドに値を入れなければならない(MUST)。
+
+
+Stewart, et al.             Standards Track                     [Page 6]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+3.3.  Negotiation of Forward-TSN-Supported parameter
+3.3.  Forward-TSN-Supportedパラメータの交渉
+
+3.3.1.  Sending Forward-TSN-Supported param in INIT
+3.3.1.  INITにおけるForward-TSN-Supportedパラメータの送信
+
+   If an SCTP endpoint supports the FORWARD TSN chunk, then any time it
+   sends an INIT during association establishment, it MAY include the
+   Forward-TSN-supported parameter in the INIT chunk to indicate this
+   fact to its peer.
+
+SCTP端末がFORWARD TSNチャンクをサポートする場合、アソシエーション確立の際にINITを送るときはいつでも、サポートしているということを相手に示すためにINITチャンクの中にForward-TSN-supportedパラメータを含めてよい(MAY)。
+
+   Note that if the endpoint chooses NOT to include the parameter, then
+   at no time during the life of the association can it send or process
+   a FORWARD TSN.  It MUST instead act as if it does NOT support the
+   FORWARD TSN chunk, returning an ERROR to the peer upon receipt of any
+   FORWARD TSN.
+
+端末がこのパラメータを含まない(NOT)と決めた場合、このアソシエーションの存在する間のいかなるときもFORWARD TSNを送ることもできないし処理することもできないことに注意すること。この端末はそのかわり、FORWARD TSNを受領したときに相手に対してERRORを返すことによって、FORWARD TSNチャンクをサポートしていない(NOT)かのようにふるまわなければならない(MUST)。
+
+3.3.2.  Receipt of Forward-TSN-Supported parameter in INIT or INIT-ACK
+3.3.2.  INITまたはINIT-ACKにおけるForward-TSN-Supportedパラメータの受信
+
+   When a receiver of an INIT detects a Forward-TSN-Supported parameter
+   and does not support the Forward-TSN chunk type, the receiver MUST
+   follow the rules defined in Section 3.3.3 of RFC 2960 [2].
+
+INITの受信者がForward-TSN-Supportedパラメータを検出したがForward-TSNチャンク型をサポートしていないときには、受信者はRFC2960[2]の3.3.3節で定義されたルールに従わなければならない(MUST)。
+
+   When a receiver of an INIT-ACK detects a Forward-TSN-Supported
+   parameter and it does not support the Forward-TSN chunk type, the
+   receiver MUST follow the rules defined in Section 3.3.3 of RFC 2960
+   [2].
+
+INIT-ACKの受信者がForward-TSN-Supportedパラメータを検出したがForward-TSNチャンク型をサポートしていないときには、受信者はRFC2960[2]の3.3.3節で定義されたルールに従わなければならない(MUST)。
+
+   When a receiver of an INIT detects a Forward-TSN-Supported parameter
+   and it does support the Forward-TSN chunk type, the receiver MAY
+   respond with a Forward-TSN-supported parameter in the INIT-ACK chunk.
+
+INITの受信者がForward-TSN-Supportedパラメータを検出しForward-TSNチャンク型をサポートしているときには、受信者はINIT-ACKチャンクの中にForward-TSN-supportedパラメータを入れて返答してよい(MAY)。
+
+   Note that if the endpoint chooses NOT to include the parameter, then
+   at no time during the life of the association can it send or process
+   a FORWARD TSN.  It MUST instead act as if it does NOT support the
+   FORWARD TSN chunk, returning an ERROR to the peer upon receipt of any
+   FORWARD TSN.
+
+端末がこのパラメータを含まない(NOT)と決めた場合、このアソシエーションの存在する間のいかなるときもFORWARD TSNを送ることもできないし処理することもできないことに注意すること。この端末はそのかわり、FORWARD TSNを受領したときに相手に対してERRORを返すことによって、FORWARD TSNチャンクをサポートしていない(NOT)かのようにふるまわなければならない(MUST)。(訳注: この文章は3.3.1にあるのとまったく同じ。送信者と受信者の立場が同じということか。)
+
+   When an endpoint that supports the FORWARD TSN chunk receives an INIT
+   that does not contain the Forward-TSN-Supported Parameter, that
+   endpoint:
+
+FORWARD TSNチャンクをサポートする端末がForward-TSN-Supportedパラメータを含まないINITを受けとった際には、その端末は:
+
+   o  MAY include the Forward-TSN-Supported parameter in the INIT-ACK,
+   o  SHOULD record the fact that the peer does not support the FORWARD
+      TSN chunk,
+   o  MUST NOT send a FORWARD TSN chunk at any time during the
+      associations life,
+   o  SHOULD inform the upper layer if the upper layer has requested
+      such notification.
+
+o INIT-ACKチャンクにForward-TSN-Supportedパラメータを含んでよい(MAY)。
+o 相手がFORWARD TSNチャンクをサポートしていないという事実を記録するべきである(SHOULD)。
+o アソシエーションの存在期間においてはいつもFORWARD TSNチャンクを送ってはならない(MUST NOT)。
+o 上位層がこれに関する通知を要求している場合は上位層に通知するべきである(SHOULD)。
+
+
+Stewart, et al.             Standards Track                     [Page 7]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+3.3.3.  Receipt of Op. Error for Forward-TSN-Supported Param
+3.3.3.  Forward-TSN-Supportedパラメータに関する操作エラーの受信
+
+   When an SCTP endpoint that desires to use the FORWARD TSN chunk
+   feature for partially reliable data transfer receives an operational
+   error from the remote endpoint (either bundled with the COOKIE or as
+   an unrecognized parameter in the INIT-ACK), indicating that the
+   remote endpoint does not recognize the Forward-TSN-Supported
+   parameter, the local endpoint SHOULD inform its upper layer of the
+   remote endpoint's inability to support partially reliable data
+   transfer.
+
+部分的に信頼性のあるデータ転送のためにFORWARD TSNチャンク機能を使いたいSCTP端末が相手端末から操作エラーを(COOKIEにバンドルされるか、あるいはINIT-ACKの中の理解できないパラメータとして)受けとった際、これは相手端末がForward-TSN-Supportedパラメータを理解できないことを示すわけだが、こちら側の端末はその上位層に相手端末が部分的に信頼性のあるデータ転送をサポートできないことを通知するべきである(SHOULD)。
+
+   The local endpoint may then choose to either:
+
+こちら側の端末は以下のいずれかの動作を選択してよい:
+
+   1) end the initiation process (in cases where the initiation process
+      has already ended, the endpoint may need to send an ABORT) in
+      consideration of the peer's inability to supply the requested
+      features for the new association, or
+
+1) 新しいアソシエーションのために相手が要求された機能を提供できないことを考慮し、初期化処理を終了する(初期化処理がすでに終了していた場合、端末はABORTを送信する必要があるかもしれない)。
+
+   2) continue the initiation process (in cases where the initiation
+      process has already completed, the endpoint MUST just mark the
+      association as not supporting partial reliability), but with the
+      understanding that partially reliable data transmission is not
+      supported.  In this case, the endpoint receiving the operational
+      error SHOULD note that the FORWARD TSN chunk is not supported, and
+      MUST NOT transmit a FORWARD TSN chunk at any time during the life
+      of the association.
+
+2) 初期化処理は継続するが(初期化処理がすでに完了していた場合、端末はこのアソシエーションを部分的な信頼性をサポートしてないとして単にマークしなければならない(MUST))、部分的に信頼性のあるデータ伝送はサポートされていないと理解しておく。この場合、操作エラーを受けとった端末はFORWARD TSNチャンクがサポートされていないことに注意すべきであり(SHOULD)、このアソシエーションが存在する間はいつもFORWARD TSNチャンクを伝送してはならない(MUST NOT)。
+
+3.4.  Definition of "abandoned" in the context of PR-SCTP
+3.4.  PR-SCTPコンテキストにおける「捨てられた("abandoned")」の定義
+
+   At some point, a sending PR-SCTP implementation MAY determine that a
+   particular data chunk SHOULD NOT be transmitted or retransmitted
+   further, in accordance with the rules governing some particular PR-
+   SCTP service definition (such as the definition of "timed
+   reliability" in Section 4.1.)  For purposes of this document, we
+   define the term "abandoned" to refer to any data chunk about which
+   the SCTP sender has made this determination.
+
+いくつかの点において、PR-SCTPを送る実装はいくつかの特定のPR-SCTPサービスの定義(例えば4.1節の"timed reliability"の定義)を支配するルールに合うように、特定のデータチャンクがこれ以上送信、あるいは再送されるべきでない(SHOULD NOT)と決定してもよい(MAY)。この文書の目的として、SCTP送信者がこのような決定を下したデータチャンクを指すために"abandoned"という用語を定義する。
+
+   Each PR-SCTP service defines the rules for determining when a TSN is
+   "abandoned", and accordingly, the rules that govern how, whether, and
+   when to "abandon" a TSN may vary from one service definition to
+   another.  However, the rules governing the actions taken when a TSN
+   is "abandoned" do NOT vary between service definitions; these rules
+   are included in Section 3.5.
+
+それぞれのPR-SCTPサービスはTSNをいつ"abandoned"とするかを決めるルールを定義するので、したがって、あるTSNをどのように"abandon"するか、"abandon"するかどうか、いつ"abandon"するかを支配するルールはあるサービス定義と他のあるサービス定義とで異なるかもしれない。しかしながら、TSNが"abandoned"とされたときにとる行動を支配するルールはサービス定義によってはかわらない(NOT)。これらのルールは3.5節に含まれている。
+
+
+
+
+
+
+Stewart, et al.             Standards Track                     [Page 8]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+3.5.  Sender Side Implementation of PR-SCTP
+3.5.  PR-SCTPの送信側実装
+
+   The sender side implementation of PR-SCTP is identical to that of the
+   base SCTP protocol, except for:
+
+PR-SCTPの送信側の実装は以下を除いて基礎のSCTPプロトコルと同一である:
+
+   o  actions a sending side PR-SCTP implementation must take when a TSN
+      is "abandoned" (as per the rules of whatever PR-SCTP service
+      definition is in effect)
+   o  special actions that a PR-SCTP implementation must take upon
+      receipt of SACK
+   o  rules governing the generation of FORWARD TSN chunks.
+
+o TSNが"abandoned"とされたときに送信側のPR-SCTP実装が(有効なPR-SCTPサービス定義がどうであってもそのルールに従って)しなければならない動作
+o SACKの受信にあたってPR-SCTP実装がしなければならない特別な動作
+o FORWARD TSNチャンクの生成を支配するルール
+
+   In detail, these exceptions are as follows:
+
+より詳細には、これらの例外は以下のようになる:
+
+   A1) The sender maintains an "Advanced.Peer.Ack.Point" for each peer
+       to track a theoretical cumulative TSN point of the peer (Note,
+       this is a _new_ protocol variable and its value is NOT
+       necessarily the same as the SCTP "Cumulative TSN Ack Point" as
+       defined in Section 1.4 of RFC 2960 [2], and as discussed
+       throughout that document.)
+
+A1) 送信者は相手の理論上の累積TSNポイントを追跡するために相手ごとに"Advanced.Peer.Ack.Point"を管理する(これは新しいプロトコル変数であり、その値はRFC 2960 [2]の1.4節で定義されているような、そしてRFC2960を通して議論されているようなSCTPの"Cumulative TSN Ack Point"とは必ずしも同じである必要はない(NOT)ことに注意)。
+
+   A2) From time to time, as governed by the rules of a particular PR-
+       SCTP service definition (see Section 4), the SCTP data sender may
+       make a determination that a particular data chunk that has
+       already been assigned a TSN SHOULD be "abandoned".
+
+A2) そのときどきに、SCTPデータ送信者は特定のPR-SCTPサービス定義(4節参照)のルールにのっとり、すでにTSNが割り当てられた特定のデータチャンクを"abandoned"とするべき(SHOULD)と決断してよい。
+
+       When a data chunk is "abandoned", the sender MUST treat the data
+       chunk as being finally acked and no longer outstanding.
+
+あるデータチャンクが"abandoned"とされた際、送信者はこのデータチャンクを最終的に確認応答されたとし、もはや送信処理中ではないとして扱わなければならない(MUST)。
+
+       The sender MUST NOT credit an "abandoned" data chunk to the
+       partial_bytes_acked as defined in Section 7.2.2 of RFC 2960 [2],
+       and MUST NOT advance the cwnd based on this "abandoned" data
+       chunk.
+
+送信者は"abandoned"データチャンクをRFC2960 [2]の7.2.2節で定義されているようにpartial_bytes_ackedに計上してはならず(MUST NOT)、またこの"abandoned"データチャンクを基にcwndを広げてはならない(MUST NOT)。
+
+   A3) When a TSN is "abandoned", if it is part of a fragmented message,
+       all other TSN's within that fragmented message MUST be abandoned
+       at the same time.
+
+A3) あるTSNが"abandoned"とされたとき、これが分割されたメッセージの一部だった場合、この分割されたメッセージに含まれる他の全てのTSNも同時に捨てられ(abandoned)なければならない(MUST)。
+
+   A4) Whenever the data sender receives a SACK from the data receiver,
+       it MUST first process the SACK using the normal procedures as
+       defined in Section 6.2.1 of RFC 2960 [2].
+
+A4) データ送信者がデータ受信者からSACKを受けとったときはいつでも、まずこのSACKをRFC 2960 [2]の6.2.1節で定義されているように通常の手続きを用いて処理しなければならない(MUST)。
+
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                     [Page 9]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   The data sender MUST then perform the following additional steps:
+
+その後、データ送信者は以下の追加のステップを実行しなければならない(MUST):
+
+       C1) Let SackCumAck be the Cumulative TSN ACK carried in the
+           received SACK.
+
+C1) SackCumAckを受信したSACKによって運ばれた累積TSN確認応答とする。
+
+           If (Advanced.Peer.Ack.Point < SackCumAck), then update
+           Advanced.Peer.Ack.Point to be equal to SackCumAck.
+
+もし(Advanced.Peer.Ack.Point < SackCumAck)ならば、Advanced.Peer.Ack.PointをSackCumAckと等しい値に更新する。
+
+       C2) Try to further advance the "Advanced.Peer.Ack.Point" locally,
+           that is, to move "Advanced.Peer.Ack.Point" up as long as the
+           chunk next in the out-queue space is marked as "abandoned",
+           as shown in the following example:
+
+C2) ローカルに"Advanced.Peer.Ack.Point"をさらに進めようと試みる、すなわち以下の例に示されているように、送出キュー空間(out-queue space)にある次のチャンクが"abandoned"とマークされている限り、"Advanced.Peer.Ack.Point"を後ろへ動かす。
+
+       Assuming that a SACK arrived with the Cumulative TSN ACK =
+       102 and the Advanced.Peer.Ack.Point is updated to this
+       value:
+
+累積TSN確認応答=102のSACKが到着し、Advanced.Peer.Ack.Pointがこの値に更新されたとする。
+
+       out-queue at the end of  ==>   out-queue after Adv.Ack.Point
+       normal SACK processing         local advancement
+
+                    ...                            ...
+       Adv.Ack.Pt-> 102 acked                      102 acked
+                    103 abandoned                    103 abandoned
+                    104 abandoned        Adv.Ack.P-> 104 abandoned
+                    105                            105
+                    106 acked                      106 acked
+                    ...                            ...
+
+       In this example, the data sender successfully advanced the
+       "Advanced.Peer.Ack.Point" from 102 to 104 locally.
+
+この例では、データ送信者がローカルに"Advanced.Peer.Ack.Point"を102から104へとうまく進めた。
+
+       C3) If, after step C1 and C2, the "Advanced.Peer.Ack.Point" is
+           greater than the Cumulative TSN ACK carried in the received
+           SACK, the data sender MUST send the data receiver a FORWARD
+           TSN chunk containing the latest value of the
+           "Advanced.Peer.Ack.Point".  Note that the sender MAY delay
+           the sending of a FORWARD TSN as defined in rule F2 below.
+           IMPLEMENTATION NOTE: It is an implementation decision as to
+           which destination address it is to be sent to, the only
+           restriction being that the address MUST be one that is
+           CONFIRMED.
+
+C3) ステップC1とC2のあとで、もし"Advanced.Peer.Ack.Point"が受信したSACKで運ばれた累積TSN確認応答よりも大きければ、データ送信者は"Advanced.Peer.Ack.Point"の最新の値を含めたFORWARD TSNチャンクをデータ受信者に送らなければならない(MUST)。送信者は以下のルールF2に定義されているようにFORWARD TSNの送信を遅らせるかもしれない(MAY)ことに注意すること。
+実装上の注意: どの宛先アドレスに送るかについては実装が決めることであり、唯一の制約はそのアドレスがCONFIRMEDでなければならない(MUST)ことである。
+
+       C4) For each "abandoned" TSN, the sender of the FORWARD TSN MUST
+           determine if the chunk has a valid stream and sequence number
+           (i.e., it was ordered).  If the chunk has a valid stream and
+           sequence number, the sender MUST include the stream and
+           sequence number in the FORWARD TSN.  This information will
+           enable the receiver to easily find any stranded TSN's waiting
+
+
+
+Stewart, et al.             Standards Track                    [Page 10]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+           on stream reorder queues.  Each stream SHOULD only be
+           reported once; this means that if multiple abandoned messages
+           occur in the same stream, then only the highest abandoned
+           stream sequence number is reported.  If the total size of the
+           FORWARD TSN does NOT fit in a single MTU, then the sender of
+           the FORWARD TSN SHOULD lower the Advanced.Peer.Ack.Point to
+           the last TSN that will fit in a single MTU.
+
+C4) "abandoned"とされたTSNのそれぞれについて、FORWARD TSNの送信者はそのチャンクが正当なストリームとシーケンス番号をもっている(すなわち順序通り(ordered))かどうかを判断しなければならない(MUST)。そのチャンクが正当なストリームとシーケンス番号をもっている場合、送信者はFORWARD TSNにそのストリームとシーケンス番号を含めなければならない(MUST)。この情報は受信者がストリーム並びかえキューの中で待っている立ち往生しているTSNを容易にみつけることを可能にするだろう。それぞれのストリームは一度だけ報告されるべき(SHOULD)で、これは同じストリームの中で複数の捨てられた(abandoned)メッセージが発生した場合に捨てられた中で最も高いストリームシーケンス番号が報告されることを意味する。FORWARD TSNの合計サイズがひとつのMTUにおさまらない(NOT)場合、FORWARD TSNの送信者はAdvanced.Peer.Ack.Pointを一つのMTUにおさまる最後のTSNに下げるべきである(SHOULD)。
+
+       C5) If a FORWARD TSN is sent, the sender MUST assure that at
+           least one T3-rtx timer is running.  IMPLEMENTATION NOTE: Any
+           destination's timer may be used for the purposes of rule C5.
+
+C5) 一つのFORWARD TSNが送信された場合、送信者は少なくとも一つのT3-rtxタイマが動作していることを保証しなければならない(MUST)。
+実装上の注意: ルールC5の目的のためにどの宛先についてのタイマを用いてもよい。
+
+   A5) Any time the T3-rtx timer expires, on any destination, the sender
+       SHOULD try to advance the "Advanced.Peer.Ack.Point" by following
+       the procedures outlined in C2 - C5.
+
+A5) T3-rtxタイマが切れたときはいつも、どの宛先についても、送信者はC2 - C5に概説された手続きに従って"Advanced.Peer.Ack.Point"を進めようと試みるべきである(SHOULD)。
+
+   The following additional rules govern the generation of FORWARD TSN
+   chunks:
+
+以下の追加ルールがFORWARD TSNチャンクの生成を支配する:
+
+   F1) An endpoint MUST NOT use the FORWARD TSN for any purposes other
+       than circumstances described in this document.
+
+F1) 端末はこの文書で記述されている状況以外では、いかなる目的でもFORWARD TSNを用いてはならない(MUST NOT)。
+
+   F2) The data sender SHOULD always attempt to bundle an outgoing
+       FORWARD TSN with outbound DATA chunks for efficiency.
+
+F2) データ送信者は効率化のために、送出するDATAチャンクと送出するFORWARD TSNをバンドルするようにいつも試みるべきである(SHOULD)。
+
+       A sender MAY even choose to delay the sending of the FORWARD TSN
+       in the hope of bundling it with an outbound DATA chunk.
+
+送信者は送出DATAチャンクとバンドリングすることを期待してFORWARD TSNの送出を遅らせる選択をしてもよい(MAY)。
+
+       IMPLEMENTATION NOTE: An implementation may wish to limit the
+       number of duplicate FORWARD TSN chunks it sends by either only
+       sending a duplicate FORWARD TSN every other SACK or waiting a
+       full RTT before sending a duplicate FORWARD TSN.
+
+実装上の注意: 実装はSACKひとつおきにしか重複FORWARD TSNを送らない、あるいは重複FORWARD TSNを送るまでRTTまるまる待つといった方法で、重複FORWARD TSNチャンクの数を制限したいと思うかもしれない。
+
+       IMPLEMENTATION NOTE: An implementation may allow the maximum
+       delay for generating a FORWARD TSN to be configured either
+       statically or dynamically in order to meet the specific timing
+       requirements of the protocol being carried, but see the next
+       rule:
+
+実装上の注意: 実装は運ばれるプロトコルの特別なタイミングに関する要求を満たすために、FORWARD TSNの生成までの最大遅延を静的に、あるいは動的に設定できるようにしてよいが、次のルールを参照すること:
+
+   F3) Any delay applied to the sending of FORWARD TSN chunk SHOULD NOT
+       exceed 200ms and MUST NOT exceed 500ms.  In other words, an
+       implementation MAY lower this value below 500ms but MUST NOT
+       raise it above 500ms.
+
+FORWARD TSNチャンクの送信に適用される遅延は200msをこえるべきではなく(SHOULD NOT)、500msをこえてはならない(MUST NOT)。すなわち、実装はこの値を500ms以下に下げてもよい(MAY)が、500msを越えて上げてはならない(MUST NOT)。
+
+       NOTE: Delaying the sending of FORWARD TSN chunks may cause delays
+       in the receiver's ability to deliver other data being held at the
+       receiver for re-ordering.  The values of 200ms and 500ms match
+
+
+
+Stewart, et al.             Standards Track                    [Page 11]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+       the required values for the delayed acknowledgement in RFC 2960
+       [2] since delaying a FORWARD TSN has the same consequences but in
+       the reverse direction.
+
+注意: FORWARD TSNチャンクの送信を遅らせることで、受信者が並びかえのために保持している他のデータの配送の能力に遅延を生じさせるかもしれない。200msおよび500msという値がRFC 2960 [2]における遅延確認応答の要求値と一致しているのは、FORWARD TSNを遅らせることは方向は逆ながら同じ結果となるからである。
+
+   F4) The detection criterion for out-of-order SACKs MUST remain the
+       same as stated in RFC 2960, that is, a SACK is only considered
+       out-of-order if the Cumulative TSN ACK carried in the SACK is
+       earlier than that of the previous received SACK (i.e., the
+       comparison MUST NOT be made against "Advanced.Peer.Ack.Point").
+
+順序通りでないSACKを検出するための条件はRFC 2960で述べられたままとしなければならない(MUST)。すなわち、SACKの中で運ばれる累積TSN確認応答が以前受信したSACKのそれよりも前であった(すなわち、比較は"Advanced.Peer.Ack.Point"に対して行ってはならない(MUST NOT))場合にのみ、そのSACKは順序通りでないとみなされる。
+
+   F5) If the decision to "abandon" a chunk is made, no matter how such
+       a decision is made, the appropriate congestion adjustment MUST be
+       made as specified in RFC 2960 if the chunk would have been marked
+       for retransmission later (e.g., either by T3-Timeout or by Fast
+       Retransmit).
+
+あるチャンクを"abandon"すると決めた場合、その決断がどのようになされたかにはかかわらず、このチャンクがあとで再送する(例えば、T3-Timeoutまたは高速再送によって)対象としてマークされたならば、RFC 2960で記述されているように適切な輻輳調節を行わなければならない(MUST)。
+
+3.6.  Receiver Side Implementation of PR-SCTP
+3.6.  PR-SCTPの受信側実装
+
+   The receiver side implementation of PR-SCTP at an SCTP endpoint A is
+   capable of supporting any PR-SCTP service definition used by the
+   sender at endpoint B, even if that service definition is not
+   supported by the sending side functionality of host A.  All that is
+   necessary is that the receiving side correctly handle the Forward-
+   TSN-Supported parameter as specified in Section 3.3, and correctly
+   handle the receipt of FORWARD TSN chunks as specified below.
+
+SCTP端末AにおけるPR-SCTPの受信側実装は、たとえホストAの送信側機能がそのサービス定義をサポートしていなくとも、端末Bの送信者が用いる任意のPR-SCTPサービス定義をサポートできる。必要なのは、受信側がForward-TSN-Supportedパラメータを3.3節で記述されているように正しく扱えることであり、FORWARD TSNチャンクの受信を以下に記述されているように正しく扱えることだけである。
+
+   DATA chunk arrival at a PR-SCTP receiver proceeds exactly as for DATA
+   chunk arrival at a base protocol SCTP receiver---that is, the
+   receiver MUST perform the same TSN handling, including duplicate
+   detection, gap detection, SACK generation, cumulative TSN
+   advancement, etc. as defined in RFC 2960 [2]---with the following
+   exceptions and additions.
+
+PR-SCTP受信者におけるDATAチャンクの到着は、基礎となるプロトコルであるSCTPの受信者におけるDATAチャンクの到着と同様に---すなわち受信者はRFC 2960 [2]で定義されているように重複検出、ギャップ検出、SACK生成、累積TSN進行などを同様に実行しなければならない(MUST)---、そして以下の例外や追加とともに、処理される。
+
+   When a FORWARD TSN chunk arrives, the data receiver MUST first update
+   its cumulative TSN point to the value carried in the FORWARD TSN
+   chunk, and then MUST further advance its cumulative TSN point locally
+   if possible, as shown by the following example:
+
+FORWARD TSNチャンクが到着した際、データ受信者はまずその累積TSNポイントをFORWARD TSNチャンクによって運ばれた値に更新せねばならず(MUST)、それからローカルに可能ならばその累積TSNポイントを、以下の例で示されているようにさらに進めなければならない(MUST):
+
+      Assuming that the new cumulative TSN carried in the arrived
+      FORWARD TSN is 103:
+
+到着したFORWARD TSNによって運ばれた新しい累積TSNが103だったと仮定する。
+
+       in-queue before processing      in-queue after processing
+            the FORWARD TSN      ==>   the FORWARD TSN and further
+                                                advancement
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                    [Page 12]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+       cum.TSN.Pt-> 102 received                   102 --
+                    103 missing                    103 --
+                    104 received                   104 --
+                    105 received      cum.TSN.Pt-> 105 received
+                    106 missing                    106 missing
+                    107 received                   107 received
+                    ...                            ...
+
+      In this example, the receiver's cumulative TSN point is first
+      updated to 103 and then further advanced to 105.
+
+この例では、受信者の累積TSNポイントがまず103に更新され、それから105までさらに進められている。
+
+   After the above processing, the data receiver MUST stop reporting any
+   missing TSNs earlier than or equal to the new cumulative TSN point.
+
+上記処理のあとで、データ受信者は新しい累積TSNポイント以前で失われたTSNについての報告をやめなければならない(MUST)。
+
+   Note, if the "New Cumulative TSN" value carried in the arrived
+   FORWARD TSN chunk is found to be behind or at the current cumulative
+   TSN point, the data receiver MUST treat this FORWARD TSN as out-of-
+   date and MUST NOT update its Cumulative TSN.  The receiver SHOULD
+   send a SACK to its peer (the sender of the FORWARD TSN) since such a
+   duplicate may indicate the previous SACK was lost in the network.
+
+到着したFORWARD TSNチャンクによって運ばれてきた「新しい累積TSN」の値が現在の累積TSNポイントの値以前であることがわかった場合、データ受信者はこのFORWARD-TSNを期限切れとして扱わねばならず(MUST)、その累積TSNを更新してはならない(MUST NOT)。このような重複は以前のSACKがネットワーク上で失われたことを示すかもしれないので、受信者は相手(FORWARD TSNの送信者)にSACKを送るべきである(SHOULD)。
+
+   Any time a FORWARD TSN chunk arrives, for the purposes of sending a
+   SACK, the receiver MUST follow the same rules as if a DATA chunk had
+   been received (i.e., follow the delayed sack rules specified in RFC
+   2960 [2] section 6.2).
+
+FORWARD TSNチャンクが到着したときはいつも、受信者はSACKを送るため、DATAチャンクを受けとったのと同様のルールに従わなければならない(MUST)(すなわちRFC 2960 [2]の6.2節に記述された遅延sackルールに従う)。
+
+   Whenever a DATA chunk arrives with the 'U' bit set to '0' (indicating
+   ordered delivery) and is out of order, the receiver must hold the
+   chunk for reordering.  Since it is possible with PR-SCTP that a DATA
+   chunk being waited upon will not be retransmitted, special actions
+   will need to be taken upon the arrival of a FORWARD TSN.
+
+'U'ビットが'0'に設定された(順序通りの配送を示す)DATAチャンクが到着しそれが順序通りでないときはいつも、受信者はそのチャンクを並びかえのために保持しなければならない。PR-SCTPについては待っているDATAチャンクが再送されないことがあるので、FORWARD TSNの到着にあたっては特別な動作が必要になるかもしれない。
+
+   In particular, during processing of a FORWARD TSN, the receiver MUST
+   use the stream sequence information to examine all of the listed
+   stream reordering queues, and immediately make available for delivery
+   stream sequence numbers earlier than or equal to the stream sequence
+   number listed inside the FORWARD TSN.  Any such stranded data SHOULD
+   be made immediately available to the upper layer application.
+
+特にFORWARD TSNの処理中には、受信者はストリームシーケンスの情報を用いて挙げられているストリーム並びかえキューの全てを調べなければならず(MUST)、FORWARD TSNの中で挙げられているストリームシーケンス番号以前のストリームシーケンス番号は即座に配送可能としなければならない。このような立ち往生したデータはただちに上位層のアプリケーションに対して利用可能とするべきである。
+
+   An application using PR-SCTP receiving data should be aware of
+   possible missing messages.  The stream sequence number can be used,
+   in such a case, to determine that an intervening message has been
+   skipped.  When intervening messages are missing, it is an application
+   decision to process the messages or to take some other corrective
+   action.
+
+PR-SCTPを用いデータを受信するアプリケーションはメッセージが失われた可能性に留意するべきである。このような場合、ストリームシーケンス番号は途中のメッセージが飛ばされたかどうかを判断するのに用いることができる。途中のメッセージが失われたとき、これらのメッセージを処理するかあるいはこれを修正するような他の動作をとるかはアプリケーションが決めることである。
+
+
+
+
+Stewart, et al.             Standards Track                    [Page 13]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   After receiving and processing a FORWARD TSN, the data receiver MUST
+   take cautions in updating its re-assembly queue.  The receiver MUST
+   remove any partially reassembled message, which is still missing one
+   or more TSNs earlier than or equal to the new cumulative TSN point.
+   In the event that the receiver has invoked the partial delivery API,
+   a notification SHOULD also be generated to inform the upper layer API
+   that the message being partially delivered will NOT be completed.
+
+FORWARD TSNを受信し処理したのち、データ受信者は自身の再構成キューの更新に注意を払わなければならない(MUST)。受信者は部分的に再構成したメッセージ、それは新しい累積TSNポイント以前のひとつ以上のTSNが欠けている、をいずれも削除しなければならない(MUST)。受信者が部分的な配送APIを起動するイベントにおいて、部分的に配送されるメッセージは完成しないであろう(NOT)ことを上位層APIに知らせるために通知を生成するべきである(SHOULD)。
+
+   Note that after receiving a FORWARD TSN and updating the cumulative
+   acknowledgement point, if a TSN that was skipped does arrive (i.e.,
+   due to network reordering), then the receiver will follow the normal
+   rules defined in RFC 2960 [2] for handling duplicate data.  This
+   implies that the receiver will drop the chunk and report it as a
+   duplicate in the next outbound SACK chunk.
+
+FORWARD TSNを受信し累積確認応答ポイントを更新したあとは、飛ばしたTSNが届いた場合(すなわちネットワークにおける並びかえによって)、受信者はRFC 2960 [2]で定義されている重複データを扱うための通常ルールに従うだろう。これは受信者がこのチャンクを破棄し、次の送出SACKチャンクにおいてこれを重複として報告するだろうということを示唆する。
+
+4.  Services provided by PR-SCTP to the upper layer
+4.  PR-SCTPが上位層に対して提供するサービス
+
+   As described in Section 1.2, it is feasible to implement a variety of
+   partially reliable transport services using the new protocol
+   mechanisms introduced in Section 3; introducing these new services
+   requires making changes only at the sending side API, and the sending
+   side protocol implementation.  Thus, there may be a temptation to
+   standardize only the protocol, and leave the service definition as
+   "implementation specific" or leave it to be defined in
+   "informational" documents.
+
+1.2節で記述したように、3節で導入した新しいプロトコルメカニズムを用いることで、部分的に信頼性のあるトランスポートサービスの多様な形態を実装することが可能となる。これらの新しいサービスの導入には送信側のAPI、および送信側のプロトコル実装についてのみ変更が必要となる。したがって、プロトコルのみを標準化し、サービス定義は「実装固有」とするか、あるいは"informational"文書で定義されることにしたいという誘惑もあるかもしれない。
+
+   However, for those who may wish to write IETF standards for upper
+   layer protocols implemented over PR-SCTP, it is important to be able
+   to refer to a standard definition of services provided.  Therefore,
+   this section provides example definitions of one such service, while
+   also providing guidelines for the definition of additional services
+   as required.  Each such service may be proposed as a separate new
+   RFC.
+
+しかしながら、PR-SCTPの上に実装される上位プロトコルについてIETF標準を記述したい人々にとって、提供されるサービスの標準定義を参照できることは重要である。それゆえ、本節はこのようなサービスのひとつについて例となる定義を与え、また同時に追加サービスの定義に必要となるガイドラインを与える。こうしたサービスはそれぞれ、別々の新しいRFCとして提案されるかもしれない。
+
+   Section 4 is organized as follows:
+
+4節の構成は以下の通りである:
+
+   o  Section 4.1 provides the definition of one specific PR-SCTP
+      service: timed reliability.
+
+o  4.1節はひとつの特定のPR-SCTPサービスであるtimed reliabilityについての定義を与える。
+
+   o  Section 4.2 describes how a particular PR-SCTP service definition
+      is requested by the upper layer during association establishment,
+      and how the upper layer is notified if that request cannot be
+      satisfied.
+
+o  4.2節はアソシエーションの確立時に上位層がどのように特定のPR-SCTPサービスの定義を要求するか、およびこの要求が満たされない場合にどのように上位層に通知するかについて記述する。
+
+   o  Section 4.3 then provides guidelines for the specification of PR-
+      SCTP services other then the one defined in this memo.
+
+o  4.3節はその後、このメモで定義されたのとは別のPR-SCTPサービスについての記述のガイドラインを与える。
+
+
+
+Stewart, et al.             Standards Track                    [Page 14]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   o  Finally, Section 4.4 describes some additional usage notes that
+      upper layer protocol designers and implementors may find helpful.
+
+o  最後に、4.4節では上位層プロトコルの設計者や実装者の助けになるような追加の使用上の注意をいくつか記述する。
+
+4.1.  PR-SCTP Service Definition for "timed reliability"
+4.1.  "timed reliability"についてのPR-SCTPサービス定義
+
+   The "timed reliability" service is a natural extension of the
+   "lifetime" concept already present in the base SCTP protocol.
+
+"timed reliability"サービスは基礎のSCTPプロトコルにすでにある"寿命"という概念の自然な拡張である。
+
+   When this service is requested for an SCTP association, it changes
+   the meaning of the lifetime parameter specified in the SEND primitive
+   (see Section 10.1, part (E) of RFC 2960 [2]; note that the parameter
+   is spelled "life time" in that document.)
+
+あるSCTPアソシエーションがこのサービスを要求したとき、SENDプリミティブで指定される寿命パラメータの意味が変更される(RFC 2960 [2]の10.1節、パート(E)を参照。この文書では"life time"とつづられているので注意のこと)。
+
+   In the base SCTP protocol, the lifetime parameter is used to avoid
+   sending stale data.  When a lifetime value is indicated for a
+   particular message and that lifetime expires, SCTP cancels the
+   sending of this message, and notifies the ULP if the first
+   transmission of the data does not take place (because of rwnd or cwnd
+   limitations, or for any other reason).  However, in the base
+   protocol, if SCTP has sent the first transmission before the lifetime
+   expires, then the message MUST be sent as a normal reliable message.
+   During episodes of congestion this is particularly unfortunate, as
+   retransmission wastes bandwidth that could have been used for other
+   (non-lifetime expired) messages.
+
+基礎のSCTPプロトコルでは寿命パラメータを、有効期限切れのデータを送らないために用いている。特定のメッセージに寿命の値が指示され、その寿命が切れたとき、SCTPはこのメッセージの送信を中止し、このデータの最初の送信が実行されていない(rwndやcwndの制約によって、あるいは他の理由により)ならば上位層に通知する。しかしながら基礎プロトコルにおいては、SCTPが寿命が尽きる前に最初の送信を行った場合は、このメッセージは通常の信頼性のあるメッセージとして送らなければならない(MUST)。輻輳発生時にはこの動作は特に不適切である。なぜなら再送は他の(寿命が尽きていない)メッセージに使えていたはずの帯域を浪費してしまうからである。
+
+   When the "timed reliability" service is invoked, this latter
+   restriction is removed.  Specifically, when the "timed reliability"
+   service is in effect, the following rules govern all messages that
+   are sent with a lifetime parameter:
+
+"timed reliability"サービスが呼びだされたとき、後者の制限は除かれる。特に"timed realiability"サービスが有効なときは、寿命パラメータとともに送る全てのメッセージを以下のルールが支配する:
+
+   TR1) If the lifetime parameter of a message is SCTP_LIFETIME_RELIABLE
+        (or unspecified see Section 5), that message is treated as a
+        normal reliable SCTP message, just as in the base SCTP protocol.
+
+TR1) メッセージの寿命パラメータがSCTP_LIFETIME_RELIABLEである(あるいは指定されていない、5節参照)場合、このメッセージは基礎SCTPプロトコルと同様に通常の信頼性のあるSCTPメッセージとして扱う。
+
+   TR2) If the lifetime parameter is not SCTP_LIFETIME_RELIABLE (see
+        Section 5), then the SCTP sender MUST treat the message just as
+        if it were a normal reliable SCTP message, as long as the
+        lifetime has not yet expired.
+
+TR2) 寿命パラメータがSCTP_LIFETIME_RELIABLEでない(5節参照)場合、まだ寿命が尽きていない限り、SCTP送信者はこのメッセージを通常の信頼性のあるSCTPメッセージのように扱わなければならない(MUST)。
+
+   TR3) Before assigning a TSN to any message, the SCTP sender MUST
+        evaluate the lifetime of that message.  If it is expired, the
+        SCTP sender MUST NOT assign a TSN to that message, but instead,
+        SHOULD issue a notification to the upper layer and abandon the
+        message.
+
+TR3) メッセージにTSNを割り当てる前に、SCTP送信者はそのメッセージの寿命をみつもらなければならない(MUST)。もし寿命が尽きていたら、SCTP送信者はそのメッセージにTSNを割り当ててはならず(MUST NOT)、かわりに上位層へ通知を発行しそのメッセージは破棄するべきである(SHOULD)。
+
+   TR4) Before transmitting or retransmitting a message for which a TSN
+        is already assigned, the SCTP sender MUST evaluate the lifetime
+        of the message.  If the lifetime of the message is expired, the
+
+
+
+Stewart, et al.             Standards Track                    [Page 15]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+        SCTP sender MUST "abandon" the message, as per the rules
+        specified in Section 3.5 marking that TSN as eligible for
+        forward TSN.  Note that this meets the requirement G1 defined in
+        Section 4.3.  IMPLEMENTATION NOTE: An implementation SHOULD
+        delay TSN assignment as mentioned in RFC 2960 [2] Section 10.1.
+        In such a case, the lifetime parameter should be checked BEFORE
+        assigning a TSN, thus allowing a message to be abandoned without
+        the need to send a FORWARD TSN.
+
+TR4) TSNがすでに割り当てられたメッセージを送信あるいは再送する前に、SCTP送信者はそのメッセージの寿命をみつもらなければならない(MUST)。そのメッセージの寿命が尽きていた場合、3.5節で記述されたルールに沿ってそのTSNをforward TSNの候補としてマークし、そのメッセージを"abandon"し(捨て)なければならない。これは4.3節で定義されている要請G1を満たすことに注意すること。
+実装上の注意: 実装はRFC 2960 [2]の10.1節で述べられているようにTSNの割り当てを遅らせるべきである(SHOULD)。このような場合は、寿命パラメータはTSNを割り当てる前に(BEFORE)チェックすべきであり、これによりFORWARD TSNを送る必要なくこのメッセージを捨てることができる。
+
+   TR5) The sending SCTP MAY evaluate the lifetime of messages at
+        anytime.  Expired messages that have not been assigned a TSN MAY
+        be handled as per rule TR3.  Expired messages that HAVE been
+        assigned a TSN MAY be handled as per rule TR4.
+
+TR5) 送信側のSCTPはいつでもメッセージの寿命をみつもってよい(MAY)。まだTSNが割り当てられていない寿命の尽きたメッセージは、ルールTR3に従って扱ってよい(MAY)。TSNがすでに割り当てられた(HAVE)寿命の尽きたメッセージは、ルールTR4に従って扱ってよい(MAY)。
+
+   TR6) The sending application MUST NOT change the lifetime parameter
+        once the message is passed to the sending SCTP.
+
+送信アプリケーションはメッセージを一旦送信SCTPに渡したら、寿命パラメータを変更してはならない(MUST NOT)。
+
+   Implementation Note: Rules TR1 through TR4 are designed in such a way
+   as to avoid requiring the implementer to maintain a separate timer
+   for each message; instead, the lifetime need only be evaluated at
+   points in the life of the message where actions are already being
+   taken, such as TSN assignment, transmission, or expiration of a
+   retransmission timeout.  Rule TR5 is intended to give the SCTP
+   implementor flexibility to evaluate lifetime at any other convenient
+   opportunity, WITHOUT requiring that lifetime be evaluated immediately
+   at the point in time where it expires.
+
+実装上の注意: TR1からTR4までのルールは、実装者が各メッセージごとに別々のタイマを管理する必要がないような方法で設計されている。別々のタイマを管理するのではなく、寿命をみつもる必要があるのはTSNの割り当て、送信、または再送タイムアウトの期限切れのように、メッセージの寿命のうちでアクションをとるタイミングのみとしている。ルールTR5はSCTP実装者に寿命が尽きたタイミングで即座に寿命をみつもることを要請することなく、他の都合のよい機会に寿命をみつもることのできる柔軟性を与えようとするものである。
+
+4.2.  PR-SCTP Association Establishment
+4.2.  PR-SCTPのアソシエーション確立
+
+   An upper layer protocol (ULP) that uses PR-SCTP may need to know
+   whether PR-SCTP can be supported on a given association.  Therefore,
+   the ULP needs to have some indication of whether the FORWARD-TSN
+   chunk is supported by its peer.
+
+PR-SCTPを利用する上位層プロトコル(ULP)は、与えられたアソシエーションがPR-SCTPをサポートしているかどうかを知る必要があるかもしれない。そのため、ULPは相手がFORWARD-TSNチャンクをサポートしているかどうかを示すものを持つ必要がある。
+
+   Section 10.1 of RFC 2960 [2] describes abstract primitives for the
+   ULP-to-SCTP interface, while noting that "individual implementations
+   must define their own exact format, and may provide combinations or
+   subsets of the basic functions in single calls."
+
+RFC 2960[2]の10.1節にULP-to-SCTP(訳注: 上位層からSCTPへの)インタフェースのための抽象的な基本要素が記述されている。この中で、「個々の実装はそれぞれの正確なフォーマットを定義しなければならず、基本機能の組み合わせまたは部分集合をひとつの呼び出しで提供してもよい」と注記されている。
+
+   In this section, we describe one additional return value that may be
+   added to the ASSOCIATE primitive to allow an SCTP service user to
+   indicate whether the FORWARD-TSN chunk is supported by its peer.
+
+本節では、SCTPサービスのユーザに相手がFORWARD-TSNチャンクをサポートしているかどうかを示すことができるように、ASSOCIATE基本要素に追加するかもしれない追加の戻り値を記述する。
+
+   RFC 2960 indicates that the ASSOCIATE primitive "allows the upper
+   layer to initiate an association to a specific peer endpoint".  It is
+   structured as follows:
+
+RFC 2960はASSOCIATE基本要素が「上位層が特定の相手端末との間でアソシエーションを初期化できるようにする」と指示している。これは以下のように構成される:
+
+
+
+Stewart, et al.             Standards Track                    [Page 16]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   Format: ASSOCIATE(local SCTP instance name, destination transport
+         addr, outbound stream count)
+   -> association id [,destination transport addr list]
+      [,outbound stream count]
+
+   This extension adds one new OPTIONAL return value, such that the new
+   primitive reads as follows:
+
+この拡張は新しいオプションの戻り値を一つ加えるので、新しい基本要素は以下のようになる:
+
+   Format: ASSOCIATE(local SCTP instance name, destination transport
+         addr, outbound stream count )
+   -> association id [,destination transport addr list]
+      [,outbound stream count] [,forward tsn supported]
+
+   NOTE: As per RFC 2960, if the ASSOCIATE primitive is implemented as a
+   non-blocking call, the new OPTIONAL return value shall be passed with
+   the association parameters using the COMMUNICATION UP notification.
+
+注意: RFC 2960によると、ASSOCIATE基本要素がノンブロッキング呼び出しとして実装されていた場合、この新しいオプションの戻り値はCOMMUNICATION UP通知を用いてアソシエーションのパラメータとともにわたされるだろう。
+
+   The new OPTIONAL parameter "forward tsn supported" is a boolean flag:
+
+この新しいオプションのパラメータ"forward tsn supported"はブール値をもつフラグである:
+
+   (0) false [default] indicates that FORWARD TSN is not enabled by both
+       endpoints.
+
+(0) 偽[デフォルト]はFORWARD TSNが両端末で使用不可能であることを示す。
+
+   (1) true indicates that FORWARD TSN is enabled on both endpoints.
+
+(1) 真は両端末でFORWARD TSNが使用可能であることを示す。
+
+   We also add a new primitive to allow the user application to enable/
+   disable the PR-SCTP service on its endpoint before an association is
+   established.
+
+アソシエーションを確立する前にその端末において、ユーザアプリケーションがPR-SCTPサービスを有効にする、あるいは無効にすることができるようにする新しい基本要素も追加する。
+
+   Format: ENABLE_PRSCTP(local SCTP instance name, boolean enable)
+
+   The boolean parameter enable, if set to true, will enable PR-SCTP
+   upon future endpoint associations.  If the boolean parameter is set
+   to false, then the local endpoint will not advertise support of PR-
+   SCTP and thus disable the feature on future associations.  It is
+   recommended that this option be disabled by default, i.e., in order
+   to enable PR-SCTP, the user will need to call this API option with
+   the enable flag set to "true".
+
+ブール値パラメータenableが真に設定された場合、端末における今後のアソシエーション上ではPR-SCTPが有効となるだろう。このブール値パラメータが偽に設定された場合、ローカル端末はPR-SCTPのサポートを広告しないだろうし、それにより将来のアソシエーションにおいてこの機能は無効とするだろう。このオプションはデフォルトでは無効にすることが推奨される。すなわちPR-SCTPを有効にするためには、ユーザはこのAPIオプションをenableフラグが「真」に設定された状態で呼びだす必要があるだろう。
+
+4.3.  Guidelines for defining other PR-SCTP Services
+4.3.  他のPR-SCTPサービスを定義するためのガイドライン
+
+   Other PR-SCTP services may be defined and implemented as dictated by
+   the needs of upper layer protocols.  If such upper layer protocols
+   are to be standardized and require some particular PR-SCTP service
+   other than the one defined in this document (i.e., "timed
+   reliability"), then those additional PR-SCTP services should also be
+   specified and standardized in a new RFC.
+
+他のPR-SCTPサービスも上位層プロトコルの必要性に指示されて定義されたり実装されたりするかもしれない。このような上位層プロトコルが標準化される予定でありこの文書で定義したもの(すなわち"timed reliability")とは別の特定のPR-SCTPサービスを必要とするならば、これらの追加のPR-SCTPサービスもまた新しいRFCにおいて記述され標準化されるべきである。
+
+
+
+Stewart, et al.             Standards Track                    [Page 17]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   It is suggested that any such additional service definitions be
+   modeled after the contents of Section 4.1.  In particular, the
+   service definition should provide:
+
+このような追加のサービス定義はいずれも4.1節の内容に沿ってモデル化していただきたい。特にそのサービス定義は以下を与えるべきである:
+
+   1. A description of how the service user specifies any parameters
+      that need to be associated with a particular message (and/or any
+      other communication that takes place between the application and
+      the SCTP transport sender) that provides the SCTP transport sender
+      with the information needed to determine when to give up on
+      transmission of a particular message.
+
+1. このサービスのユーザが特定のメッセージの送信をいつあきらめるかを決めるのに必要な情報をSCTPトランスポート送信者に与える特別なメッセージ(そして/あるいはアプリケーションとSCTPトランスポート送信者の間でおこなわれる他のやりとり)に関連づける必要のあるパラメータをどのように指定するかについての記述。
+
+      Preferably, this description should reference the primitives in
+      the abstract API provided in Section 10 of RFC 2960 [2],
+      indicating any:
+
+できれば、この記述は以下を示しながら、RFC 2960 [2]の10節で与えられている抽象APIの基本要素を参照すべきである。
+
+      *  changes to the interpretation of the existing parameters of
+         existing primitives,
+
+*  既存の基本要素の既存のパラメータの解釈へのなんらかの変更
+
+      *  additional parameters to be added to existing primitives (these
+         should be OPTIONAL, and default values should be indicated),
+
+*  既存の基本要素に加える追加パラメータ(これらのパラメータはオプション(OPTIONAL)であるべきであり、デフォルト値も示されるべきである)
+
+      *  additional primitives that may be needed.
+
+*  必要となるかもしれない追加の基本要素
+
+   2. A description of the rules used by the sender side implementation
+      to determine when to give up on messages that have not yet been
+      assigned a TSN.  This description should also indicate what
+      protocol events trigger the evaluation, and what actions to take
+      (e.g., notifications.)
+
+2. 送信側の実装がまだTSNを割り当てていないメッセージの送信をいつあきらめるか決めるために使われるルールの記述。この記述はまたどんなプロトコルイベントを契機に評価がなされるかを示すべきであり、どんな行動をとるべきかも示すべきである(たとえば通知)。
+
+   3. A description of the rules used by the sender side implementation
+      to determine when to give up on the transmission or retransmission
+      of messages that have already been assigned a TSN, and may have
+      been transmitted and possibly retransmitted zero or more times.
+
+3. 送信側の実装がすでにTSNを割り当て、おそらくは送信され、0回またはそれ以上の回数だけ再送された可能性のあるメッセージの送信や再送を、いつあきらめるか決めるために使われるルールの記述。
+
+   Items (2) and (3) in the list above should also indicate what
+   protocol events trigger the evaluation, and what actions to take if
+   the determination is made that the sender should give up on
+   transmitting the message (e.g., notifications to the ULP.)
+
+上記リストの項目(2)と(3)はまた、どんなプロトコルイベントを契機として評価するか、および送信者がそのメッセーじの送信をあきらめるべきだと決断を下したならばどのような動作をとるべきか(例えば、上位層への通知)、も指示するべきである。
+
+   Note that in any PR-SCTP service, the following rule MUST be
+   specified to avoid a protocol deadlock:
+
+どのようなPR-SCTPサービスにおいても、プロトコルのデッドロックを避けるために以下のルールを指定しなければならない(MUST)ことに注意:
+
+   (G1) When the sender side implementation gives up on transmitting a
+        message that has been assigned a TSN (i.e., when that message is
+        "abandoned", as defined in Section 3.4), the sender side MUST
+        mark that TSN as eligible for forward TSN, and the rules in
+        Section 3.4 regarding the sending of FORWARD TSN chunks MUST be
+        followed.
+
+(G1) 送信側の実装がTSNを割り当てられているメッセージの送信をあきらめるときは(すなわち3.4節で定義されているようにそのメッセージが捨てられる("abandoned")とき)、送信者はそのTSNをforward TSNの候補としてマークしなければならず(MUST)、FORWARD TSNチャンクの送信に関する3.4節のルールに従わなければならない(MUST)。
+
+
+Stewart, et al.             Standards Track                    [Page 18]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   Finally, a PR-SCTP service definition should specify a "canonical
+   service name" to uniquely identify the service, and distinguish it
+   from other PR-SCTP services.  This name can then be used in upper
+   layer protocol standards to indicate which PR-SCTP service definition
+   is required by that upper layer protocol.  It can also be used in the
+   documentation of APIs of PR-SCTP implementations to indicate how an
+   upper layer indicates which definition of PR-SCTP service should
+   apply.  The canonical service name for the PR-SCTP service defined in
+   Section 4.1 is "timed reliability".
+
+最後に、あるPR-SCTPサービス定義はこのサービスを一意に識別する"canonical service name"を指定し、他のPR-SCTPサービスと区別するべきである。この名前は上位層プロトコル標準において、その上位層プロトコルがどのPR-SCTPサービス定義を必要とするかを示すために使うことができる。この名前はまたPR-SCTP実装のAPIの説明文書において、上位層がどのPR-SCTPサービスの定義を適用するべきかをどのように指定するかを指示するためにも使うことができる。4.1節で定義されているPR-SCTPサービスのcanonical service nameは"timed reliability"である。
+
+4.4.  Usage Notes
+4.4.  使用上の注意
+
+   Detecting missing data in a PR-SCTP stream is useful for some
+   applications (e.g., Fibre channel or SCSI over IP).  With PR-SCTP,
+   this becomes possible - the upper layer simply needs to examine the
+   stream sequence number of the arrived user messages of that stream to
+   detect any missing data.  Note, this detection only works when all
+   the messages on that stream are sent in order, i.e., the "U" bit is
+   not set.
+
+PR-SCTPストリームにおけるデータ損失の検出はいくつかのアプリケーションで有用である(例えば、Fibre channelやSCSI over IP)。PR-SCTPではこれが可能となる−−上位層が損失データを検出するためにそのストリームで届いたユーザメッセージのストリームシーケンス番号を調べる必要があるだけだ。この検出はこのストリームで送られるメッセージの全てが順序通り、すなわち"U"ビットが設定されていないときに限り有効であることに注意すること。
+
+5.  Variables
+5.  変数
+
+   This section defines variables used throughout this document:
+
+本節はこの文書を通して用いられる変数を定義する:
+
+   SCTP_LIFETIME_RELIABLE - A user interface indication defined by an
+   implementation and used to indicate when a message is to be
+   considered fully reliable.
+
+SCTP_LIFETIME_RELIABLE − 実装によって定義され、あるメッセージがいつ完全に信頼性があるとみなされるかを示すのに使われるユーザインターフェースにおける指示変数。
+
+6.  Acknowledgments
+6.  謝辞
+
+   The authors would like to thank Brian Bidulock, Scott Bradner, Jon
+   Berger, Armando L. Caro Jr., John Loughney, Jon Peterson, Ivan Arias
+   Rodriguez, Ian Rytina, Chip Sharp, and others for their comments.
+
+著者らはコメントをいただいたBrian Bidulock, Scott Bradner, Jon Berger, Armando L. Caro Jr., John Loughney, Jon Peterson, Ivan Arias Rodriguez, Ian Rytina, Chip Sharpほかの各氏に感謝したい。
+
+7.  Security Considerations
+7.  セキュリティについての考慮
+
+   This document does not introduce any new security concerns to SCTP
+   other than the ones already documented in RFC 2960 [2].  In
+   particular, this document shares the same security issues as
+   unordered data within RFC 2960 [2] identified by RFC 3436 [4].  An
+   application using the PR-SCTP extension should not use transport
+   layer security; further details can be found in RFC 3436 [4].
+
+この文書はRFC 2960 [2]ですでに記述されたもの以外には、SCTPについての新しいセキュリティ懸案事項を何も紹介していない。特に、この文書はRFC 3436[4]で同定されるRFC 2960 [2]における順序通りでないデータについてのものと同じセキュリティ問題をかかえる。PR-SCTP拡張を用いるアプリケーションはトランスポート層におけるセキュリティを適用するべきではない。さらなる詳細はRFC 3436 [4]にある。
+
+   Note that the ability to cause a message to be skipped (i.e, the
+   FORWARD TSN chunk) does not provide any new attack for a Man-In-the-
+   Middle (MIM), since the MIM already is capable of changing and/or
+   withholding data, thus effectively skipping messages.  However, the
+   FORWARD TSN chunk does provide a mechanism to make it easier for a
+
+
+
+Stewart, et al.             Standards Track                    [Page 19]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   MIM to skip selective messages when the application has this feature
+   enabled since the MIM would have less state to maintain.
+
+メッセージをとばす機能(すなわち、FORWARD TSNチャンク)はMan-In-the-Middle (MIM)に対して新しい攻撃方法を何も提供しないことに注意すること。なぜならMIMはもともとデータを変更したり、あるいはデータを留めておくことができるので、メッセージを飛ばすことも可能だからである。MIMは管理すべき状態が少ないので、アプリケーションがこの機能を有効としているとき、FORWARD TSNチャンクはMIMが選択的にメッセージを飛ばすのを容易にするメカニズムを提供してしまう。
+
+8.  IANA Considerations
+8.  IANAにまつわる考慮事項
+
+   IANA has assigned 192 as a new chunk type to SCTP.
+
+IANAはSCTPの新しいチャンク型として192を割り当てている。
+
+   IANA has assigned 49152 as a new parameter type code to SCTP.
+
+IANAはSCTPの新しいパラメータ型の番号として49152を割り当てている。
+
+9.  References
+9.  参考文献
+
+9.1.  Normative References
+9.1.  標準を定める文献
+
+   [1]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
+        Levels", BCP 14, RFC 2119, March 1997.
+
+   [2]  Stewart, R., Xie, Q., Morneault, K., Sharp, C., Schwarzbauer,
+        H., Taylor, T., Rytina, I., Kalla, M., Zhang, L. and V. Paxson,
+        "Stream Control Transmission Protocol", RFC 2960, October 2000.
+
+9.2.  Informative References
+9.2.  情報提供する文献
+
+   [3]  Clark, D. and D. Tennenhouse, "Architectural Considerations for
+        a New Generation of Protocols", SIGCOMM 1990 pp. 200-208,
+        September 1990.
+
+   [4]  Jungmaier, A., Rescorla, E. and M. Tuexen, "Transport Layer
+        Security over Stream Control Transmission Protocol", RFC 3436,
+        December 2002.
+
+10.  Authors' Addresses
+10.  著者のアドレス
+
+   Randall R. Stewart
+   Cisco Systems, Inc.
+   8725 West Higgins Road
+   Suite 300
+   Chicago, IL  60631
+   USA
+
+   Phone: +1-815-477-2127
+   EMail: rrs@cisco.com
+
+
+
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                    [Page 20]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+   Michael A. Ramalho
+   Cisco Systems, Inc.
+   1802 Rue de la Porte
+   Wall Township, NJ  07719-3784
+   USA
+
+   Phone: +1.732.449.5762
+   EMail: mramalho@cisco.com
+
+
+   Qiaobing Xie
+   Motorola, Inc.
+   1501 W. Shure Drive, #2309
+   Arlington Heights, IL  60004
+   USA
+
+   Phone: +1-847-632-3028
+   EMail: qxie1@email.mot.com
+
+
+   Michael Tuexen
+   Univ. of Applied Sciences Muenster
+   Stegerwaldstr. 39
+   48565 Steinfurt
+   Germany
+
+   EMail: tuexen@fh-muenster.de
+
+
+   Phillip T. Conrad
+   University of Delaware
+   Department of Computer and Information Sciences
+   Newark, DE  19716
+   USA
+
+   Phone: +1 302 831 8622
+   EMail: conrad@acm.org
+   URI:   http://www.cis.udel.edu/~pconrad
+
+
+
+
+
+
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                    [Page 21]
+
+RFC 3758           SCTP Partial Reliability Extension           May 2004
+
+
+11.  Full Copyright Statement
+11.  完全な著作権の記述
+(訳注: 原文のみが有効ですので注意してください。)
+
+   Copyright (C) The Internet Society (2004).  This document is subject
+   to the rights, licenses and restrictions contained in BCP 78, and
+   except as set forth therein, the authors retain all their rights.
+
+著作権表示(C)The Internet Society (2004)。この文書はBCP 78に含まれる権利、ライセンス、および制限のもとにあり、特記された場合以外は著者らがその権利を保持する。
+
+   This document and the information contained herein are provided on an
+   "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+   OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET
+   ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE
+   INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+   WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+この文書およびここに含まれる情報は基本的にそのままの("AS IS")状態で提供され、「貢献者、彼または彼女が代表する組織あるいは彼または彼女に資金を援助する組織(もしあれば)、The Internet Society、およびInternet Engineering Task Forceは、明示しているか暗示しているかに関わらず一切の保証を放棄する。この保証にはここにある情報を用いることで特定の目的のために商品性や適応性に関するどんな権利もどんな暗示的な保証も侵害しないというような保証を含むがそれに限らない。」
+
+Intellectual Property
+知的財産
+
+   The IETF takes no position regarding the validity or scope of any
+   Intellectual Property Rights or other rights that might be claimed to
+   pertain to the implementation or use of the technology described in
+   this document or the extent to which any license under such rights
+   might or might not be available; nor does it represent that it has
+   made any independent effort to identify any such rights.  Information
+   on the procedures with respect to rights in RFC documents can be
+   found in BCP 78 and BCP 79.
+
+この文書で記述された技術の実装や使用、またはライセンスが利用可能あるいは不可能となる拡張に付随すると主張するかもしれない知的財産権またはその他の権利の正当性や範囲に関してはいかなる立場もとらない。またこのような権利を識別するためにそれぞれ独立した努力を払うということを示すわけでもない。RFC文書における権利に関する手続きの情報はBCP 78およびBCP 79にある。
+
+   Copies of IPR disclosures made to the IETF Secretariat and any
+   assurances of licenses to be made available, or the result of an
+   attempt made to obtain a general license or permission for the use of
+   such proprietary rights by implementers or users of this
+   specification can be obtained from the IETF on-line IPR repository at
+   http://www.ietf.org/ipr.
+
+IETF事務局によってなされたIPR(知的財産権)開示の控えおよび利用可能なライセンスについての保証、あるいは実装者やユーザがこの仕様の利用のための一般的なライセンスまたは許可を得るための試みの結果は http://www.ietf.org/ipr にあるIETFオンラインIPRリボジトリから取得できる。
+
+   The IETF invites any interested party to bring to its attention any
+   copyrights, patents or patent applications, or other proprietary
+   rights that may cover technology that may be required to implement
+   this standard.  Please address the information to the IETF at ietf-
+   ipr@ietf.org.
+
+IETFはこの標準を実装するために必要となるかもしれない技術をカバーするような著作権、特許または特許応用、あるいは他の財産権に注意を払ってくれる興味をもった団体を招いている。ietr-ipr@ietr.orgのアドレスにIETFへのそのような情報を提供していただきたい。
+
+Acknowledgement
+謝辞
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC編集者職務への資金提供は現在、Internet Societyによる。
+
+
+
+
+
+
+
+Stewart, et al.             Standards Track                    [Page 22]
+

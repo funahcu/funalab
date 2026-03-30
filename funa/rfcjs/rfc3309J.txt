@@ -1,0 +1,1104 @@
+
+
+
+
+
+
+Network Working Group                                           J. Stone
+Request for Comments: 3309                                      Stanford
+Updates: 2960                                                 R. Stewart
+Category: Standards                                        Cisco Systems
+                                                                 D. Otis
+                                                                SANlight
+                                                          September 2002
+
+
+      Stream Control Transmission Protocol (SCTP) Checksum Change
+ストリーム制御転送プロトコル(SCTP)のチェックサム変更
+
+Status of this Memo
+このメモのステータス
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+この文書はインターネットコミュニティのためのインターネット標準トラックプロトコルを記述するものであり、改善のための議論や提案をお願いするものである。このプロトコルについての標準化プロセスにおけるステータスは"インターネット公式プロトコル標準(Internet Official Protocol Standards)" (STD 1)の最新版を参照いただきたい。このメモの配布に制限はない。
+
+Copyright Notice
+著作権表示
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+(日本語訳について)-----------------------------------------------------
+この日本語訳は舟阪淳一が個人的に訳したものです。誤訳も含まれていると
+思いますので、ご利用の際は注意してください。また不備をみつけられましたら
+ご連絡ください。この注意書きを残していれば、自由に改変、再配布できる
+ものとします。
+連絡先 http://mary.net.info.hiroshima-cu.ac.jp/cgi-bin/mailaccept.pl
+-----------------------------------------------------------------------
+
+Abstract
+概要
+
+   Stream Control Transmission Protocol (SCTP) currently uses an Adler-
+   32 checksum.  For small packets Adler-32 provides weak detection of
+   errors.  This document changes that checksum and updates SCTP to use
+   a 32 bit CRC checksum.
+
+ストリーム制御転送プロトコル(SCTP)は現在Adler-32チェックサムを用いている。小さなパケットについてAdler-32はエラー検知能力が低い。この文書はこのチェックサムを変更し、32ビットCRCチェックサムを使うようにSCTPを更新する。
+
+Table of Contents
+
+   1 Introduction ...................................................  2
+   2 Checksum Procedures ............................................  3
+   3 Security Considerations.........................................  6
+   4 IANA Considerations.............................................  6
+   5 Acknowledgments ................................................  6
+   6 References .....................................................  7
+   Appendix .........................................................  9
+   Authors' Addresses ............................................... 16
+   Full Copyright Statement ......................................... 17
+
+
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                     [Page 1]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+1 Introduction
+1 はじめに
+
+   A fundamental weakness has been detected in SCTP's current Adler-32
+   checksum algorithm [STONE].  This document updates and replaces the
+   Adler-32 checksum definition in [RFC 2960].  Note that there is no
+   graceful transition mechanism for migrating to the new checksum.
+   Implementations are expected to immediately switch to the new
+   algorithm; use of the old algorithm is deprecated.
+
+SCTPの現在のAdler-32チェックサムアルゴリズムには根本的な弱点がみつかった[STONE]。この文書は[RFC 2960]におけるAdler-32チェックサムの定義を更新し置きかえるものである。新しいチェックサムに移行するためのゆるやかな変更メカニズムは存在しないことに注意されたい。実装は即座に新しいアルゴリズムに切り替えることが期待される。古いアルゴリズムの使用は避けられたい。
+
+   One requirement of an effective checksum is that it evenly and
+   smoothly spreads its input packets over the available check bits.
+
+有効なチェックサムについての要求の一つは、入力パケットを利用可能なチェックビットの上で均等にかつなめらかに分散させることである。
+
+   From an email from Jonathan Stone, who analyzed the Adler-32 as part
+   of his doctoral thesis:
+
+Jonathan Stone、彼は博士論文の一部でAdler-32を解析した人物だが、彼からのメールを以下に引用する：
+
+   "Briefly, the problem is that, for very short packets, Adler32 is
+   guaranteed to give poor coverage of the available bits.  Don't take
+   my word for it, ask Mark Adler.  :-)
+
+「手短かに言うと問題は、非常に小さなパケットに対して、Adler32は利用可能なビットをカバーする範囲が狭いことである。これは私の言葉だと思わないでいただきたい。Mark Adlerにどうぞ。:-)
+
+   Adler-32 uses two 16-bit counters, s1 and s2.  s1 is the sum of the
+   input, taken as 8-bit bytes.  s2 is a running sum of each value of
+   s1.  Both s1 and s2 are computed mod-65521 (the largest prime less
+   than 2^16).  Consider a packet of 128 bytes.  The *most* that each
+   byte can be is 255.  There are only 128 bytes of input, so the
+   greatest value which the s1 accumulator can have is 255 * 128 =
+   32640.  So, for 128-byte packets, s1 never wraps.  That is critical.
+   Why?
+
+Adler-32は二つの16ビットカウンタ、s1とs2を用いる。s1は8ビット1バイトごとの入力の和である。s2はs1の各値についての走行和である。s1とs2はともにmod-65521(2^16未満で最大の素数)を用いて計算される。ここで128バイトのパケットを考えよう。各バイトがとりうる「最大値」は255である。いま入力は128バイトしかないので、s1アキュムレータ(加算器)がとりうる最大の値は255 * 128 = 32640である。したがって128バイトのパケットについてs1は決してラップ(一周、訳注：16ビットを一周させるには0から始めて65535を越える必要がある)しない。これは致命的である。なぜか?
+
+   The key is to consider the distribution of the s1 values, over some
+   distribution of the values of the individual input bytes in each
+   packet.  Because s1 never wraps, s1 is simply the sum of the
+   individual input bytes.  (Even Doug's trick of adding 0x5555 doesn't
+   help here, and an even larger value doesn't really help: we can get
+   at most one mod-65521 reduction.)
+
+鍵はs1の値の分布を、それぞれのパケットについて個々の入力バイトの値のいくつかの分布にわたって考えることである。s1は決して一周しないので、s1は単に各入力バイトの和となってしまう。(0x5555を加えるというDougのトリックもここでは助けとならず、さらに大きな値も実際には助けとならない。たかだか一つのmod-65521による余りが得られるだけである。)
+
+   Given the further assumption that the input bytes are drawn
+   independently from some distribution (they probably aren't: for file
+   system data, it's even worse than that!), the Central Limit Theorem
+   tells us that that s1 will tend to have a normal distribution.
+   That's bad: it tells us that the value of s1 will have hot-spots at
+   around 128 times the mean of the input distribution: around 16k,
+   assuming a uniform distribution.  That's bad.  We want the
+   accumulator to wrap as many times as possible, so that the resulting
+   sum has as close to a uniform distribution as possible.  (I call this
+   "fairness".)
+
+入力バイトがなんらかの分布から独立に取り出される(おそらくそうはならない。ファイルシステムのデータについてはかえってこれよりも状況は悪い。)というさらなる仮定が与えられたとしても、中心極限定理(Central Limit Theorem)はこのs1が正規分布を持つ傾向にあるであろうことを教えてくれる。これは悪条件だ、すなわちs1値は入力分布の平均の128倍(一様分布を仮定すると16k)のまわりにホットスポットを持ってしまうだろう。これは都合が悪いのである。アキュムレータは結果の和ができるだけ一様分布に近い分布を持つように、できるだけ多くの回数の周回をしてほしいからである。(これを「公平性」と呼ぶ。)
+
+
+
+
+Stone, et. al.              Standards Track                     [Page 2]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   So, for short packets, the Adler-32 s1 sum is guaranteed to be
+   unfair.  Why is that bad?  It's bad because the space of valid
+   packets -- input data, plus checksum values -- is also small.  If all
+   packets have checksum values very close to 32640, then the likelihood
+   of even a 'small' error leaving a damaged packet with a valid
+   checksum is higher than if all checksum values are equally likely."
+
+従って小さなパケットに対してはAdler-32のs1和は不公平であると判明した。なぜこれが悪いのか? 正当なパケット--入力データに加えてチェックサム値--の空間もまた小さいために、都合が悪いのである。もし全てのパケットが32640に非常に近いチェックサム値をもってしまうなら、ほんの「小さな」誤りが破損したパケットに正当なチェックサム値を残してしまう可能性が、全てのチェックサム値が等しくあり得る場合よりも高くなってしまう。」
+
+   Due to this inherent weakness, exacerbated by the fact that SCTP will
+   first be used as a signaling transport protocol where signaling
+   messages are usually less than 128 bytes, a new checksum algorithm is
+   specified by this document, replacing the current Adler-32 algorithm
+   with CRC-32c.
+
+この根本的な弱点により、またSCTPはまずシグナリングメッセージが通常128バイト未満であるようなシグナリングトランスポートプロトコルとして使われるという事実もさらに状況を悪化させるので、この文書では現在のAdler-32アルゴリズムをCRC-32cで置きかえる形で、新しいチェックサムアルゴリズムを記述する。
+
+1.1 Conventions
+1.1 慣行事項
+
+   The keywords MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT,
+   SHOULD,SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL,
+   when they appear in this document, are to be interpreted as described
+   in [RFC2119].
+
+この文書内にMUST、MUST NOT、REQUIRED、SHALL、SHALL NOT、SHOULD、SHOULD NOT、RECOMMENDED、NOT RECOMMENDED、MAY、およびOPTIONALというキーワードが出てきたときは、[RFC2119]で記述されているように解釈するものとする。
+
+   Bit number order is defined in [RFC1700].
+
+ビット数順序は[RFC1700]で定義されている。
+
+2 Checksum Procedures
+2 チェックサム処理手順
+
+   The procedures described in section 2.1 of this document MUST be
+   followed, replacing the current checksum defined in [RFC2960].
+
+[RFC2960]で定義されている現行のチェックサムを置きかえ、本文書の2.1節で定義されている処理手順に従わなければならない(MUST)。
+
+   Furthermore any references within [RFC2960] to Adler-32 MUST be
+   treated as a reference to CRC-32c.  Section 2.1 of this document
+   describes the new calculation and verification procedures that MUST
+   be followed.
+
+さらに[RFC2960]の中のAdler-32への参照はいずれもCRC-32cへの参照として扱わなければならない(MUST)。本文書の2.1節は従わなければならない(MUST)新しい計算と検証の処理手順を記述する。
+
+2.1 Checksum Calculation
+2.1 チェックサムの計算
+
+   When sending an SCTP packet, the endpoint MUST strengthen the data
+   integrity of the transmission by including the CRC-32c checksum value
+   calculated on the packet, as described below.
+
+SCTPパケットを送信する際、端末は以下に記述するように、そのパケットについて計算したCRC-32cチェックサム値を含むことによって転送のデータ完全性を強化しなければならない(MUST)。
+
+   After the packet is constructed (containing the SCTP common header
+   and one or more control or DATA chunks), the transmitter shall:
+
+パケットを構成(SCTP共通ヘッダと一つ以上の制御またはDATAチャンクを含む)したあとで、送信者は以下の処理を行うだろう:
+
+   1) Fill in the proper Verification Tag in the SCTP common header and
+      initialize the Checksum field to 0's.
+
+1) SCTP共通ヘッダの認証タグに正しい値を入れ、チェックサムフィールド(の全てのビット)を0で初期化する。
+
+   2) Calculate the CRC-32c of the whole packet, including the SCTP
+      common header and all the chunks.
+
+2) SCTP共通ヘッダと全てのチャンクを含んだパケット全体のCRC-32cを計算する。
+
+
+
+Stone, et. al.              Standards Track                     [Page 3]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   3) Put the resulting value into the Checksum field in the common
+      header, and leave the rest of the bits unchanged.
+
+3) 計算結果の値を共通ヘッダのチェックサムフィールドに入れ、その他のビットは変更しないでそのままにする。
+
+   When an SCTP packet is received, the receiver MUST first check the
+   CRC-32c checksum:
+
+SCTPパケットを受信したとき、受信者は最初にCRC-32cチェックサムを(以下の手順により)確認しなければならない(MUST):
+
+   1) Store the received CRC-32c value,
+
+1) 受信したCRC-32cの値を保存する。
+
+   2) Replace the 32 bits of the Checksum field in the received SCTP
+      packet with all '0's and calculate a CRC-32c value of the whole
+      received packet.  And,
+
+2) 受信したSCTPパケットの32ビットのチェックサムフィールドを全て0のビットに置きかえ、受信パケット全体のCRC-32cの値を計算する。
+
+   3) Verify that the calculated CRC-32c value is the same as the
+      received CRC-32c value.  If not, the receiver MUST treat the
+      packet as an invalid SCTP packet.
+
+3) 計算したCRC-32cの値が受信したCRC-32cの値と同じであるか検証する。同じでない場合、受信者はこのパケットを不正なSCTPパケットとして扱わなければならない(MUST)。
+
+   The default procedure for handling invalid SCTP packets is to
+   silently discard them.
+
+不正なSCTPパケットを扱うデフォルトの処理は静かに(silently)破棄することである。
+
+   Any hardware implementation SHOULD be done in a way that is
+   verifiable by the software.
+
+ハードウェア実装はいずれもソフトウェアによって検証可能な形でなされるべきである(SHOULD)。
+
+   We define a 'reflected value' as one that is the opposite of the
+   normal bit order of the machine.  The 32 bit CRC is calculated as
+   described for CRC-32c and uses the polynomial code 0x11EDC6F41
+   (Castagnoli93) or x^32+x^28+x^27+x^26+x^25
+   +x^23+x^22+x^20+x^19+x^18+x^14+x^13+x^11+x^10+x^9+x^8+x^6+x^0.  The
+   CRC is computed using a procedure similar to ETHERNET CRC [ITU32],
+   modified to reflect transport level usage.
+
+マシンの通常のビットオーダの反対で解釈した値を「反射値(reflected value)」と定義する。32ビットCRCはCRC-32cとして記述されたように計算し、多項式コード0x11EDC6F41
+(Castagnoli93)すなわち(?)x^32+x^28+x^27+x^26+x^25+x^23+x^22+x^20+x^19+x^18+x^14+x^13+x^11+x^10+x^9+x^8+x^6+x^0を用いる。CRCはETHERNET CRC [ITU32]と似た処理手順を用い、トランスポートレベルの使用を反映するために修正した形で計算する。
+
+   CRC computation uses polynomial division.  A message bit-string M is
+   transformed to a polynomial, M(X), and the CRC is calculated from
+   M(X) using polynomial arithmetic [Peterson 72].
+
+CRCの計算は多項式除算を用いる。メッセージビットストリングMは多項式M(X)に変換され、CRCはM(X)から多項式演算を用いて計算する[Peterson 72]。
+
+   When CRCs are used at the link layer, the polynomial is derived from
+   on-the-wire bit ordering: the first bit 'on the wire' is the high-
+   order coefficient.  Since SCTP is a transport-level protocol, it
+   cannot know the actual serial-media bit ordering.  Moreover,
+   different links in the path between SCTP endpoints may use different
+   link-level bit orders.
+
+CRCをリンク層で用いるときは、多項式はワイヤ上のビット順序、すなわち「ワイヤ上を流れる」最初のビットが最も高位の係数となる順序で導く。SCTPはトランスポートレベルのプロトコルなので、実際のメディアに沿ったビット順序は知りえない。そのうえ、SCTP端末間の経路上の異なるリンクはそれぞれ別のリンクレベルビット順序を用いているかもしれない。
+
+   A convention must therefore be established for mapping SCTP transport
+   messages to polynomials for purposes of CRC computation.  The bit-
+   ordering for mapping SCTP messages to polynomials is that bytes are
+   taken most-significant first; but within each byte, bits are taken
+   least-significant first.  The first byte of the message provides the
+   eight highest coefficients.  Within each byte, the least-significant
+   SCTP bit gives the most significant polynomial coefficient within
+
+
+
+Stone, et. al.              Standards Track                     [Page 4]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   that byte, and the most-significant SCTP bit is the least significant
+   polynomial coefficient in that byte.  (This bit ordering is sometimes
+   called 'mirrored' or 'reflected' [Williams93].)  CRC polynomials are
+   to be transformed back into SCTP transport-level byte values, using a
+   consistent mapping.
+
+したがってCRCの計算のためにSCTPのトランスポートメッセージを多項式に対応づける方法を確立しなければならない。SCTPメッセージを多項式に対応づけるビット順序は、バイト単位では最も大きな位を最初にとるが、各バイト内ではビット単位で最も小さな位を最初にとる。メッセージの最初のバイトは最も高位の8つの係数を与える。各バイトの内、最も低位のSCTPビットがそのバイトにおける最も高位の多項式係数を与え、最も高位のSCTPビットがそのバイトにおける最も低位の多項式係数となる。(このビット順序はときに「鏡像の(mirrored)」または「反射の(reflected)」と呼ばれる[Williams93]。) CRC多項式は一貫性のある対応づけによってSCTPトランスポートレベルのバイト値に変換して戻すことになる。
+
+   The SCTP transport-level CRC value should be calculated as follows:
+
+SCTPトランスポートレベルのCRC値は以下のように計算すべきである:
+
+      -  CRC input data are assigned to a byte stream, numbered from 0
+         to N-1.
+
+- CRC入力データは0からN-1までに番号づけされてバイトストリームに割り当てられる。
+
+      -  the transport-level byte-stream is mapped to a polynomial
+         value.  An N-byte PDU with j bytes numbered 0 to N-1, is
+         considered as coefficients of a polynomial M(x) of order 8N-1,
+         with bit 0 of byte j being coefficient x^(8(N-j)-8), bit 7 of
+         byte j being coefficient x^(8(N-j)-1).
+
+- トランスポートレベルのバイトストリームは多項式の値に対応づける。jバイトを含む0からN-1まで番号づけされたNバイトのPDUはオーダ8N-1の多項式M(x)の係数とみなし、バイトjのビット0はx^(8(N-j)-8)の係数となり、バイトjのビット7はx^(8(N-j)-1)の係数となる。
+
+<訳注>
+(具体例)
+     バイト0               バイト1         ......     バイトj          ...
+        83                    67                        84
+  0 1 0 1 0 0 1 1       0 1 0 0 0 0 1 1           0 1 0 1 0 1 0 0
+ 8N-8 8N-7 ... 8N-1   8N-16 8N-15 ... 8N-9      8(N-j)-8 ... 8(N-j)-1
+係数に対応するxの指数
+</訳注>
+
+      -  the CRC remainder register is initialized with all 1s and the
+         CRC is computed with an algorithm that simultaneously
+         multiplies by x^32 and divides by the CRC polynomial.
+
+- CRC剰余レジスタは全て1のビットで初期化し、CRCはx^32倍しCRC多項式で割るという作業を同時に行うアルゴリズムを用いて計算する。
+
+      -  the polynomial is multiplied by x^32 and divided by G(x), the
+         generator polynomial, producing a remainder R(x) of degree less
+         than or equal to 31.
+
+- 多項式はx^32倍してG(x)、すなわち生成多項式、で割ることにより、 31以下の次数をもつ剰余R(x)を得る。
+
+      -  the coefficients of R(x) are considered a 32 bit sequence.
+
+- R(x)の係数は32ビット列とみなす。
+
+      -  the bit sequence is complemented.  The result is the CRC
+         polynomial.
+
+- このビット列の補数をとる。結果はCRC多項式となる。
+
+      -  The CRC polynomial is mapped back into SCTP transport-level
+         bytes.  Coefficient of x^31 gives the value of bit 7 of SCTP
+         byte 0, the coefficient of x^24 gives the value of bit 0 of
+         byte 0.  The coefficient of x^7 gives bit 7 of byte 3 and the
+         coefficient of x^0 gives bit 0 of byte 3.  The resulting four-
+         byte transport-level sequence is the 32-bit SCTP checksum
+         value.
+
+- このCRC多項式をSCTPトランスポートレベルのバイト列に対応づけて戻す。x^31の係数がSCTPのバイト0のビット7の値を与え、x^24の係数がバイト0のビット0を与える。x^7の係数がバイト3のビット7を与え、x^0の係数がバイト3のビット0を与える。この結果の4バイトのトランスポートレベル(バイト)列が32ビットのSCTPチェックサム値である。
+
+   IMPLEMENTATION NOTE: Standards documents, textbooks, and vendor
+   literature on CRCs often follow an alternative formulation, in which
+   the register used to hold the remainder of the long-division
+   algorithm is initialized to zero rather than all-1s, and instead the
+   first 32 bits of the message are complemented.  The long-division
+   algorithm used in our formulation is specified, such that the the
+   initial multiplication by 2^32 and the long-division are combined
+   into one simultaneous operation.  For such algorithms, and for
+   messages longer than 64 bits, the two specifications are precisely
+   equivalent.  That equivalence is the intent of this document.
+
+実装上の注意: CRCについての標準文書、教科書、およびベンダの文書はしばしば別の記述に従っており、それによると長い除算(long-division)アルゴリズムの余りを保持するのに用いるレジスタは全て1ではなく0に初期化されており、そしてメッセージの最初の32ビットの補数がとられている。我々の記述で用いている長い除算(long-division)は、最初の2^32との積と長い除算を一つの同時処理として組みあわせるように指定している。こうしたアルゴリズム、そして64ビットより長いメッセージについては、二つの記述は正確に等価である。この等価性が本文書の趣旨である(?)。
+
+
+Stone, et. al.              Standards Track                     [Page 5]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   Implementors of SCTP are warned that both specifications are to be
+   found in the literature, sometimes with no restriction on the long-
+   division algorithm.  The choice of formulation in this document is to
+   permit non-SCTP usage, where the same CRC algorithm may be used to
+   protect messages shorter than 64 bits.
+
+文献の中で、ときには長い除算についての制限なしにどちらの記述もみつかることがあるということを、SCTPの実装者に警告する。本文書の記述を選択するとSCTP以外の使用法も許すことになるが、その場合はこの同じCRCアルゴリズムは64ビットよりも短いメッセージを保護するために使われるかもしれない。
+
+   If SCTP could follow link level CRC use, the CRC would be computed
+   over the link-level bit-stream.  The first bit on the link mapping to
+   the highest-order coefficient, and so on, down to the last link-level
+   bit as the lowest-order coefficient.  The CRC value would be
+   transmitted immediately after the input message as a link-level
+   'trailer'.  The resulting link-level bit-stream would be (M(X)x) *
+   x^32) + (M(X)*x^32))/ G(x), which is divisible by G(X).  There would
+   thus be a constant CRC remainder for 'good' packets.  However, given
+   that implementations of RFC 2960 have already proliferated, the IETF
+   discussions considered that the benefit of a 'trailer' CRC did not
+   outweigh the cost of making a very large change in the protocol
+   processing.  Further, packets accepted by the SCTP 'header' CRC are
+   in one-to-one correspondence with packets accepted by a modified
+   procedure using a 'trailer' CRC value, and where the SCTP common
+   checksum header is set to zero on transmission and is received as
+   zero.
+
+SCTPがリンクレベルのCRC使用法に従うのなら、CRCはリンクレベルのビット列について計算されるだろう。リンク上の最初のビットが最高次の係数となり、以下同様にリンクレベルでの最後のビットが最低次の係数となるように対応する。このCRCの値はリンクレベルの「トレイラ」として入力メッセージの直後に送信されるだろう。結果のリンクレベルのビット列は((M(X)x) * x^32) + (M(X)*x^32))/ G(x)となり、これはG(X)で割りきれる。従って「良好な」パケットについては定数のCRC剰余があるだろう(?)。しかしながら、RFC 2960の実装はすでに激増しているので、IETFでの議論では「トレイラ」CRCのご利益はプロトコル処理に大きな変更を加えるコストにみあわないと考えた。そのうえ、SCTP「ヘッダ」CRCによって受けつけたパケットは「トレイラ」CRC値を用いた修正処理手順によって受けつけたパケットと一対一対応し、この修正処理手順においてはSCTP共通ヘッダのチェックサムは送信において0に設定され(たとえ値が入っていても)0として受信される。
+
+   There may be a computational advantage in validating the Association
+   against the Verification Tag, prior to performing a checksum, as
+   invalid tags will result in the same action as a bad checksum in most
+   cases.  The exceptions for this technique would be INIT and some
+   SHUTDOWN-COMPLETE exchanges, as well as a stale COOKIE-ECHO.  These
+   special case exchanges must represent small packets and will minimize
+   the effect of the checksum calculation.
+
+チェックサム処理の前に認証タグに対してアソシエーションの正当性チェックをする方が、計算上有利になるかもしれない。というのは不正なタグはほとんどの場合、合わないチェックサムと同じ処理をする結果となるからである。このテクニックの例外は、期限切れのCOOKIE-ECHOはもちろんのこと、INITやいくつかのSHUTDOWN-COMPLETEの交換が該当する。これらの特別な場合の交換では小さなパケットを用いなければならず、それはチェックサム計算の影響を最小にするだろう。
+
+3 Security Considerations
+3 セキュリティに関する考慮
+
+   In general, the security considerations of RFC 2960 apply to the
+   protocol with the new checksum as well.
+
+一般的には、RFC2960についてのセキュリティ上の考慮はこの新しいチェックサムを採用したプロトコルにも同様に適用される。
+
+4 IANA Considerations
+4 IANAにまつわる考慮事項
+
+   There are no IANA considerations required in this document.
+
+この文書ではIANAに関連した考慮事項で必要なものはない。
+
+
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                     [Page 6]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+5 Acknowledgments
+5 謝辞
+
+   The authors would like to thank the following people that have
+   provided comments and input on the checksum issue:
+
+著者らはチェックサムの問題に対してコメントやアドバイスをいただいた以下の人々に感謝したい。
+
+   Mark Adler, Ran Atkinson, Stephen Bailey, David Black, Scott Bradner,
+   Mikael Degermark, Laurent Glaude, Klaus Gradischnig, Alf Heidermark,
+   Jacob Heitz, Gareth Kiely, David Lehmann, Allision Mankin, Lyndon
+   Ong, Craig Partridge, Vern Paxson, Kacheong Poon, Michael Ramalho,
+   David Reed, Ian Rytina, Hanns Juergen Schwarzbauer, Chip Sharp, Bill
+   Sommerfeld, Michael Tuexen, Jim Williams, Jim Wendt, Michael Welzl,
+   Jonathan Wood, Lloyd Wood, Qiaobing Xie, La Monte Yarroll.
+
+   Special thanks to Dafna Scheinwald, Julian Satran, Pat Thaler, Matt
+   Wakeley, and Vince Cavanna, for selection criteria of polynomials and
+   examination of CRC polynomials, particularly CRC-32c [Castagnoli93].
+
+多項式の選択条件およびCRC多項式、特にCRC-32c[Castagnoli93]の
+検査についてDafna Scheinwald, Julian Satran, Pat Thaler,
+Matt Wakeley, およびVince Cavannaに特別に感謝する。
+
+   Special thanks to Mr. Ross Williams and his document [Williams93].
+   This non-formal perspective on software aspects of CRCs furthered
+   understanding of authors previously unfamiliar with CRC computation.
+   More formal treatments of [Blahut 94] or [Peterson 72], was also
+   essential.
+
+Mr. Ross Williamsと彼の文書[Williams93]にも特別に感謝する。CRCsのソフトウェア的な側面についてのこの形式ばっていない展望は、以前CRC計算について詳しくなかった著者たちの理解を深めてくれた。[Blahut 94]あるいは[Peterson 72]のようなもっと形式的な扱いもまた不可欠であった。
+
+6 References
+6 参考文献
+
+   [Castagnoli93]  G. Castagnoli, S. Braeuer and M. Herrman,
+                   "Optimization of Cyclic Redundancy-Check Codes with
+                   24 and 32 Parity Bits", IEEE Transactions on
+                   Communications, Vol. 41, No. 6, June 1993
+
+   [McKee75]       H. McKee, "Improved {CRC} techniques detects
+                   erroneous leading and trailing 0's in transmitted
+                   data blocks", Computer Design Volume 14 Number 10
+                   Pages 102-4,106, October 1975
+
+   [RFC1700]       Reynolds, J. and J. Postel, "ASSIGNED NUMBERS", RFC
+                   1700, October 1994.
+
+   [RFC2026]       Bradner, S., "The Internet Standards Process --
+                   Revision 3", BCP 9, RFC 2026, October 1996.
+
+   [RFC2119]       Bradner, S., "Key words for use in RFCs to Indicate
+                   Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC2960]       Stewart, R., Xie, Q., Morneault, K., Sharp, C.,
+                   Schwarzbauer, H., Taylor, T., Rytina, I., Kalla, M.,
+                   Zhang, L. and V. Paxson, "Stream Control Transmission
+                   Protocol," RFC 2960, October 2000.
+
+
+
+Stone, et. al.              Standards Track                     [Page 7]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   [ITU32]         ITU-T Recommendation V.42, "Error-correcting
+                   procedures for DCEs using asynchronous-to-synchronous
+                   conversion", section 8.1.1.6.2, October 1996.
+
+7.1 Informative References
+7.1 情報提供してくれた参考文献
+
+   [STONE]         Stone, J.,  "Checksums in the Internet", Doctoral
+                   dissertation - August 2001.
+
+   [Williams93]    Williams, R., "A PAINLESS GUIDE TO CRC ERROR
+                   DETECTION ALGORITHMS" - Internet publication, August
+                   1993,
+                   http://www.geocities.com/SiliconValley/Pines/
+                   8659/crc.htm.
+
+   [Blahut 1994]   R.E. Blahut, Theory and Practice of Error Control
+                   Codes, Addison-Wesley, 1994.
+
+   [Easics 2001]   http://www.easics.be/webtools/crctool.  Online tools
+                   for synthesis of CRC Verilog and VHDL.
+
+   [Feldmeier 95]  David C. Feldmeier, Fast software implementation of
+                   error detection codes, IEEE Transactions on
+                   Networking, vol 3 no 6, pp 640-651, December, 1995.
+
+   [Glaise 1997]   R.  J. Glaise, A two-step computation of cyclic
+                   redundancy code CRC-32 for ATM networks, IBM Journal
+                   of Research and Development} vol 41 no 6, 1997.
+                   http://www.research.ibm.com/journal/rd/416/
+                   glaise.html.
+
+   [Prange 1957]   E. Prange, Cyclic Error-Correcting codes in two
+                   symbols, Technical report AFCRC-TN-57-103, Air Force
+                   Cambridge Research Center, Cambridge, Mass. 1957.
+
+   [Peterson 1972] W. W. Peterson and E.J Weldon, Error Correcting
+                   Codes, 2nd. edition, MIT Press, Cambridge,
+                   Massachusetts.
+
+   [Shie2001]      Ming-Der Shieh et. al, A Systematic Approach for
+                   Parallel CRC Computations. Journal of Information
+                   Science and Engineering, Vol.17 No.3, pp.445-461
+
+   [Sprachman2001] Michael Sprachman, Automatic Generation of Parallel
+                   CRC Circuits, IEEE Design & Test May-June 2001
+
+
+
+
+
+
+Stone, et. al.              Standards Track                     [Page 8]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+Appendix
+追補
+
+   This appendix is for information only and is NOT part of the
+   standard.
+
+この追補は情報提供のためだけのものであり、標準の一部ではない(NOT)。
+
+   The anticipated deployment of SCTP ranges over several orders of
+   magnitude of link speed: from cellular-power telephony devices at
+   tens of kilobits, to local links at tens of gigabits.  Implementors
+   of SCTP should consider their link speed and choose, from the wide
+   range of CRC implementations, one which matches their own design
+   point for size, cost, and throughput.  Many techniques for computing
+   CRCs are known.  This Appendix surveys just a few, to give a feel for
+   the range of techniques available.
+
+SCTPは数桁(オーダー)のリンク速度の範囲で配備されることが予想される。すなわち、数10Kbit/sのセルラ電話から数10Gbit/sのローカルリンクまでである。SCTPの実装者はリンク速度を想定し、広いCRC実装の範囲の中からサイズ、コスト、およびスループットの点で自身の設計に合うものを一つ選ぶ。CRCを計算する多くのテクニックが知られている。この追補はそのほんの少しをサーベイし、利用可能なテクニックの幅広さの感触を与えるものである。
+
+   CRCs are derived from early work by Prange in the 1950s [Prange 57].
+   The theory underlying CRCs and choice of generator polynomial can be
+   introduced by either the theory of Galois fields [Blahut 94] or as
+   ideals of an algebra over cyclic codes [cite Peterson 72].
+
+CRCは1950年代において、Prangeの早期の仕事で導きだされたものである[Prange 57]。CRCの基となる理論および生成多項式の選び方は、ガロア域の理論から[Blahut 94]、あるいは巡回コードについての代数の完成形[Peterson 72の引用]として導入されてきたと言える。
+
+   One of the simplest techniques is direct bit-serial hardware
+   implementations, using the generator polynomial as the taps of a
+   linear feedback shift register (LSFR).  LSFR computation follows
+   directly from the mathematics, and is generally attributed to Prange.
+   Tools exist which, a CRC generator polynomial, will produce
+   synthesizable Verilog code for CRC hardware [Easics 2001].
+
+最もシンプルなテクニックの一つとして、生成多項式を線形フィードバックシフトレジスタ(LSFR)のタップとして用い、直接ビットシリアルなハードウェアとして実装する方法がある。LSFRによる計算は数学に直接従っており、一般にはPrangeによるものと考えられている。CRC生成多項式からCRCハードウェアで合成可能なVerilogコードを生成するようなツールが存在する[Easics 2001]。
+
+   Since LSFRs do not scale well in speed, a variety of other techniques
+   have been explored.  One technique exploits the fact that the divisor
+   of the polynomial long-division, G, is known in advance.  It is thus
+   possible to pre-compute lookup tables giving the polynomial remainder
+   of multiple input bits --- typically 2, 4, or 8 bits of input at a
+   time.  This technique can be used either in software or in hardware.
+   Software to compute lookup tables yielding 2, 4, or 8 bits of result
+   is freely available. [Williams93]
+
+LSFRは速度についてスケールしない(訳注: 高速に対応できない)ので、その他に多様なテクニックが探究されてきた。あるテクニックは多項式の長い除算における除数(割る数)Gが事前にわかっている事実を利用する。このとき複数の入力ビット --- 典型的には一度に入力される2、4、または8ビットについて、多項式剰余を与える対応表をあらかじめ計算しておくことが可能となる。このテクニックはソフトウェア、あるいはハードウェアにおいて用いることができる。2、4、または8ビットについての結果を導く対応表を計算するためのソフトウェアはフリーで利用可能である。[Williams93]
+
+   For multi-gigabit links, the above techniques may still not be fast
+   enough.  One technique for computing CRCS at OC-48 rates is 'two-
+   stage' CRC computation [Glaise 1997].  Here, some multiple of G(x),
+   G(x)H(x), is chosen so as to minimize the number of nonzero
+   coefficients, or weight, of the product G(x)H(x).  The low weight of
+   the product polynomial makes it susceptible to efficient hardware
+   divide-by-constant implementations.  This first stage gives M(x)/
+   (G(x)H(x)), as its result.  The second stage then divides the result
+   of the first stage by H(x), yielding (M(x)/(G(x)H(x)))/H(x).  If H(x)
+   is also relatively prime to G(x), this gives M(x)/G(x).  Further
+   developments on this approach can be found in [Shie2001] and
+   [Sprachman2001].
+
+数Gbit/sのリンクに対しては、上記のテクニックもまだ十分な速さがないかもしれない。OC-48レートにおいてCRCを計算する一つのテクニックとして「2ステージ」CRC計算法がある[Glaise 1997]。ここで、G(x)のある倍数G(x)H(x)を、その係数、すなわち重みの非零の数を最小にするように選ぶ。積で得られた多項式の重みが低いことにより、効率的にハードウェアで「定数で割る(divide-by-constant)」実装が可能となる。この第一ステージが計算結果としてM(x)/(G(x)H(x))を与える。それから第二ステージでは第一ステージの結果をH(x)で割り、(M(x)/(G(x)H(x))/H(x)を得る。H(x)もまたG(x)と互いに素であるならば、この結果はM(x)/G(x)を与える。このアプローチのさらなる発展は[Shie2001]や[Sprachman2001]にみられる。
+
+
+Stone, et. al.              Standards Track                     [Page 9]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+   The literature also includes a variety of software CRC
+   implementations.  One approach is to use a carefully-tuned assembly
+   code for direct polynomial division.  [Feldmeier 95] reports that for
+   low-weight polynomials, tuned polynomial arithmetic gives higher
+   throughput than table-lookup algorithms.  Even within table-lookup
+   algorithms, the size of the table can be tuned, either for total
+   cache footprint, or (for space-restricted environments) to minimize
+   total size.
+
+この文書はさまざまなソフトウェアによるCRCの実装も含む。その中の一つのアプローチとして、直接多項式の除算を行うために慎重にチューニングされたアセンブリコードを用いるものがある。[Feldmeier 95]は、重みの低い多項式については、チューニングされた多項式代数計算が対応表を調べるアルゴリズムよりも高速であることを報告している。対応表を調べるアルゴリズムの中でも、合計のキャッシュの参照跡(footprint)のため、あるいは(記憶空間に制限のある環境において)合計サイズを最小化するように、表のサイズはチューニングできる。
+
+   Implementors should keep in mind, the bit ordering described in
+   Section 2: the ordering of bits within bytes for computing CRCs in
+   SCTP is the least significant bit of each byte is the most-
+   significant polynomial coefficient(and vice-versa).  This 'reflected'
+   SCTP CRC bit ordering matches on-the-wire bit order for Ethernet and
+   other serial media, but is the reverse of traditional Internet bit
+   ordering.
+
+実装者は2節に記述されているビット順序を心に留めるべきである。すなわちSCTPにおいてCRCを計算するためのビット順序は、各バイトの最低位のビットが最高次の多項式係数となる(そして逆もしかり)。この「反射した(reflected)」SCTPのCRCビット順序はイーサーネットや他のシリアル通信メディアにおけるワイヤ上のビット順序と一致するが、インターネットの伝統的なビット順序とは逆になる。
+
+   One technique to accommodate this bit-reversal can be explained as
+   follows: sketch out a hardware implementation, assuming the bits are
+   in CRC bit order; then perform a left-to-right inversion (mirror
+   image) on the entire algorithm.  (We defer, for a moment, the issue
+   of byte order within words.)  Then compute that "mirror image" in
+   software.  The CRC from the "mirror image" algorithm will be the
+   bit-reversal of a correct hardware implementation.  When the link-
+   level media sends each byte, the byte is sent in the reverse of the
+   host CPU bit-order.  Serialization of each byte of the "reflected"
+   CRC value re-reverses the bit order, so in the end, each byte will be
+   transmitted on-the-wire in the specified bit order.
+
+このビット逆順に順応するための一つのテクニックとして以下がある。ビットがCRCビット順序であることを仮定してハードウェア実装の概略を考え、その後で全体のアルゴリズムに対して左から右への反転(鏡像)を実施する。(ひとまずワードの中のバイトオーダの問題はあとまわしにする。)それからソフトウェアにて「鏡像(mirror image)」を計算する。「鏡像」アルゴリズムによるCRCは正確なハードウェア実装のビット逆順(bit-reversal)となるだろう。リンクレベルのメディアが各バイトを送り出す際、このバイトはホストCPUのビット順序の逆順で送り出される。「反射された(reflected)」CRC値は各バイトがシリアライズされることにより再度ビット順序が逆となり、結局のところ、各バイトはワイヤ上で指定されたビット順序で転送されることになるだろう。
+
+   The following non-normative sample code is taken from an open-source
+   CRC generator [Williams93], using the "mirroring" technique and
+   yielding a lookup table for SCTP CRC32-c with 256 entries, each 32
+   bits wide.  While neither especially slow nor especially fast, as
+   software table-lookup CRCs go, it has the advantage of working on
+   both big-endian and little-endian CPUs, using the same (host-order)
+   lookup tables, and using only the pre-defined ntohl() and htonl()
+   operations.  The code is somewhat modified from [Williams93], to
+   ensure portability between big-endian and little-endian
+   architectures.  (Note that if the byte endian-ness of the target
+   architecture is known to be little-endian the final bit-reversal and
+   byte-reversal steps can be folded into a single operation.)
+
+以下の標準ではないサンプルコードはオープンソースのCRC生成器[Williams93]からのものであり、これは「ミラーリング(mirroring)」テクニックを用い、それぞれ32ビット幅の256の項目をもったSCTP CRC32-cのための対応表をもっている。特別遅くも特別速くもないものの、ソフトウェアのCRCの対応表探索がすすんでいるので、この方法はビッグエンディアンとリトルエンディアンの両方のCPUで動作し、同じ(ホスト固有順序)の対応表を用い、すでに定義されているntohl()とhtonl()操作しか使わないという点で有利である。このコードはビッグエンディアンとリトルエンディアンのアーキテクチャの間で互換性(ポータビリティ)を保証するために[Williams93]のものを少し修正してある。(ターゲットとなるアーキテクチャのバイトエンディアンがリトルエンディアンとわかっている場合は、最後のビット逆転およびバイト逆転のステップを一つの操作にまとめることができる。)
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                    [Page 10]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+/*************************************************************/
+/* Note Definition for Ross Williams table generator would   */
+/* be: TB_WIDTH=4, TB_POLLY=0x1EDC6F41, TB_REVER=TRUE        */
+/* For Mr. Williams direct calculation code use the settings */
+/* cm_width=32, cm_poly=0x1EDC6F41, cm_init=0xFFFFFFFF,      */
+/* cm_refin=TRUE, cm_refot=TRUE, cm_xorort=0x00000000        */
+/*************************************************************/
+
+/* Example of the crc table file */
+#ifndef __crc32cr_table_h__
+#define __crc32cr_table_h__
+
+#define CRC32C_POLY 0x1EDC6F41
+#define CRC32C(c,d) (c=(c>>8)^crc_c[(c^(d))&0xFF])
+
+unsigned long  crc_c[256] =
+{
+0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
+0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
+0x8AD958CFL, 0x78B2DBCCL, 0x6BE22838L, 0x9989AB3BL,
+0x4D43CFD0L, 0xBF284CD3L, 0xAC78BF27L, 0x5E133C24L,
+0x105EC76FL, 0xE235446CL, 0xF165B798L, 0x030E349BL,
+0xD7C45070L, 0x25AFD373L, 0x36FF2087L, 0xC494A384L,
+0x9A879FA0L, 0x68EC1CA3L, 0x7BBCEF57L, 0x89D76C54L,
+0x5D1D08BFL, 0xAF768BBCL, 0xBC267848L, 0x4E4DFB4BL,
+0x20BD8EDEL, 0xD2D60DDDL, 0xC186FE29L, 0x33ED7D2AL,
+0xE72719C1L, 0x154C9AC2L, 0x061C6936L, 0xF477EA35L,
+0xAA64D611L, 0x580F5512L, 0x4B5FA6E6L, 0xB93425E5L,
+0x6DFE410EL, 0x9F95C20DL, 0x8CC531F9L, 0x7EAEB2FAL,
+0x30E349B1L, 0xC288CAB2L, 0xD1D83946L, 0x23B3BA45L,
+0xF779DEAEL, 0x05125DADL, 0x1642AE59L, 0xE4292D5AL,
+0xBA3A117EL, 0x4851927DL, 0x5B016189L, 0xA96AE28AL,
+0x7DA08661L, 0x8FCB0562L, 0x9C9BF696L, 0x6EF07595L,
+0x417B1DBCL, 0xB3109EBFL, 0xA0406D4BL, 0x522BEE48L,
+0x86E18AA3L, 0x748A09A0L, 0x67DAFA54L, 0x95B17957L,
+0xCBA24573L, 0x39C9C670L, 0x2A993584L, 0xD8F2B687L,
+0x0C38D26CL, 0xFE53516FL, 0xED03A29BL, 0x1F682198L,
+0x5125DAD3L, 0xA34E59D0L, 0xB01EAA24L, 0x42752927L,
+0x96BF4DCCL, 0x64D4CECFL, 0x77843D3BL, 0x85EFBE38L,
+0xDBFC821CL, 0x2997011FL, 0x3AC7F2EBL, 0xC8AC71E8L,
+0x1C661503L, 0xEE0D9600L, 0xFD5D65F4L, 0x0F36E6F7L,
+0x61C69362L, 0x93AD1061L, 0x80FDE395L, 0x72966096L,
+0xA65C047DL, 0x5437877EL, 0x4767748AL, 0xB50CF789L,
+0xEB1FCBADL, 0x197448AEL, 0x0A24BB5AL, 0xF84F3859L,
+0x2C855CB2L, 0xDEEEDFB1L, 0xCDBE2C45L, 0x3FD5AF46L,
+0x7198540DL, 0x83F3D70EL, 0x90A324FAL, 0x62C8A7F9L,
+0xB602C312L, 0x44694011L, 0x5739B3E5L, 0xA55230E6L,
+0xFB410CC2L, 0x092A8FC1L, 0x1A7A7C35L, 0xE811FF36L,
+
+
+
+Stone, et. al.              Standards Track                    [Page 11]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+0x3CDB9BDDL, 0xCEB018DEL, 0xDDE0EB2AL, 0x2F8B6829L,
+0x82F63B78L, 0x709DB87BL, 0x63CD4B8FL, 0x91A6C88CL,
+0x456CAC67L, 0xB7072F64L, 0xA457DC90L, 0x563C5F93L,
+0x082F63B7L, 0xFA44E0B4L, 0xE9141340L, 0x1B7F9043L,
+0xCFB5F4A8L, 0x3DDE77ABL, 0x2E8E845FL, 0xDCE5075CL,
+0x92A8FC17L, 0x60C37F14L, 0x73938CE0L, 0x81F80FE3L,
+0x55326B08L, 0xA759E80BL, 0xB4091BFFL, 0x466298FCL,
+0x1871A4D8L, 0xEA1A27DBL, 0xF94AD42FL, 0x0B21572CL,
+0xDFEB33C7L, 0x2D80B0C4L, 0x3ED04330L, 0xCCBBC033L,
+0xA24BB5A6L, 0x502036A5L, 0x4370C551L, 0xB11B4652L,
+0x65D122B9L, 0x97BAA1BAL, 0x84EA524EL, 0x7681D14DL,
+0x2892ED69L, 0xDAF96E6AL, 0xC9A99D9EL, 0x3BC21E9DL,
+0xEF087A76L, 0x1D63F975L, 0x0E330A81L, 0xFC588982L,
+0xB21572C9L, 0x407EF1CAL, 0x532E023EL, 0xA145813DL,
+0x758FE5D6L, 0x87E466D5L, 0x94B49521L, 0x66DF1622L,
+0x38CC2A06L, 0xCAA7A905L, 0xD9F75AF1L, 0x2B9CD9F2L,
+0xFF56BD19L, 0x0D3D3E1AL, 0x1E6DCDEEL, 0xEC064EEDL,
+0xC38D26C4L, 0x31E6A5C7L, 0x22B65633L, 0xD0DDD530L,
+0x0417B1DBL, 0xF67C32D8L, 0xE52CC12CL, 0x1747422FL,
+0x49547E0BL, 0xBB3FFD08L, 0xA86F0EFCL, 0x5A048DFFL,
+0x8ECEE914L, 0x7CA56A17L, 0x6FF599E3L, 0x9D9E1AE0L,
+0xD3D3E1ABL, 0x21B862A8L, 0x32E8915CL, 0xC083125FL,
+0x144976B4L, 0xE622F5B7L, 0xF5720643L, 0x07198540L,
+0x590AB964L, 0xAB613A67L, 0xB831C993L, 0x4A5A4A90L,
+0x9E902E7BL, 0x6CFBAD78L, 0x7FAB5E8CL, 0x8DC0DD8FL,
+0xE330A81AL, 0x115B2B19L, 0x020BD8EDL, 0xF0605BEEL,
+0x24AA3F05L, 0xD6C1BC06L, 0xC5914FF2L, 0x37FACCF1L,
+0x69E9F0D5L, 0x9B8273D6L, 0x88D28022L, 0x7AB90321L,
+0xAE7367CAL, 0x5C18E4C9L, 0x4F48173DL, 0xBD23943EL,
+0xF36E6F75L, 0x0105EC76L, 0x12551F82L, 0xE03E9C81L,
+0x34F4F86AL, 0xC69F7B69L, 0xD5CF889DL, 0x27A40B9EL,
+0x79B737BAL, 0x8BDCB4B9L, 0x988C474DL, 0x6AE7C44EL,
+0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L,
+};
+
+#endif
+
+ /* Example of table build routine */
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#define OUTPUT_FILE   "crc32cr.h"
+#define CRC32C_POLY    0x1EDC6F41L
+FILE *tf;
+
+
+
+
+Stone, et. al.              Standards Track                    [Page 12]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+unsigned long
+reflect_32 (unsigned long b)
+{
+  int i;
+  unsigned long rw = 0L;
+
+  for (i = 0; i < 32; i++){
+      if (b & 1)
+        rw |= 1 << (31 - i);
+      b >>= 1;
+  }
+  return (rw);
+}
+
+unsigned long
+build_crc_table (int index)
+{
+  int i;
+  unsigned long rb;
+
+  rb = reflect_32 (index);
+
+  for (i = 0; i < 8; i++){
+      if (rb & 0x80000000L)
+       rb = (rb << 1) ^ CRC32C_POLY;
+      else
+       rb <<= 1;
+  }
+  return (reflect_32 (rb));
+}
+
+main ()
+{
+  int i;
+
+  printf ("\nGenerating CRC-32c table file <%s>\n", OUTPUT_FILE);
+  if ((tf = fopen (OUTPUT_FILE, "w")) == NULL){
+      printf ("Unable to open %s\n", OUTPUT_FILE);
+      exit (1);
+  }
+  fprintf (tf, "#ifndef __crc32cr_table_h__\n");
+  fprintf (tf, "#define __crc32cr_table_h__\n\n");
+  fprintf (tf, "#define CRC32C_POLY 0x%08lX\n", CRC32C_POLY);
+  fprintf (tf, "#define CRC32C(c,d) (c=(c>>8)^crc_c[(c^(d))&0xFF])\n");
+  fprintf (tf, "\nunsigned long  crc_c[256] =\n{\n");
+  for (i = 0; i < 256; i++){
+      fprintf (tf, "0x%08lXL, ", build_crc_table (i));
+      if ((i & 3) == 3)
+
+
+
+Stone, et. al.              Standards Track                    [Page 13]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+        fprintf (tf, "\n");
+  }
+   fprintf (tf, "};\n\n#endif\n");
+
+  if (fclose (tf) != 0)
+    printf ("Unable to close <%s>." OUTPUT_FILE);
+  else
+    printf ("\nThe CRC-32c table has been written to <%s>.\n",
+      OUTPUT_FILE);
+}
+
+
+
+/* Example of crc insertion */
+
+#include "crc32cr.h"
+
+unsigned long
+generate_crc32c(unsigned char *buffer, unsigned int length)
+{
+  unsigned int i;
+  unsigned long crc32 = ~0L;
+  unsigned long result;
+  unsigned char byte0,byte1,byte2,byte3;
+
+  for (i = 0; i < length; i++){
+      CRC32C(crc32, buffer[i]);
+  }
+  result = ~crc32;
+
+  /*  result  now holds the negated polynomial remainder;
+   *  since the table and algorithm is "reflected" [williams95].
+   *  That is,  result has the same value as if we mapped the message
+   *  to a polynomial, computed the host-bit-order polynomial
+   *  remainder, performed final negation, then did an end-for-end
+   *  bit-reversal.
+resultは今、多項式剰余の否定を保持している。というのはテーブルとアルゴリズムが「反射されている(reflected)」からである[williams95]。すなわちresultは、メッセージを多項式に対応づけ、ホストのビット順序での多項式剰余を計算し、最後の否定を処理し、端から端までビットを逆並びにした場合と同じ値となる。
+   *  Note that a 32-bit bit-reversal is identical to four inplace
+   *  8-bit reversals followed by an end-for-end byteswap.
+   *  In other words, the bytes of each bit are in the right order,
+   *  but the bytes have been byteswapped.  So we now do an explicit
+   *  byteswap.  On a little-endian machine, this byteswap and
+   *  the final ntohl cancel out and could be elided.
+32ビットのビット逆並びは、四つの8ビット逆並びのあとで端から端へバイトを入れ替えたものと同じであることに注意。言いかえれば、各ビットのバイト順序は正しいが、バイトが入れ替わっている(?)。そこで明確にバイト入れ替えを行う。リトルエンディアンのマシンにおいては、このバイト入れ替えと最後のntohlが打ち消し合うのでこれらを省略できるだろう。
+   */
+
+  byte0 = result & 0xff;
+  byte1 = (result>>8) & 0xff;
+  byte2 = (result>>16) & 0xff;
+  byte3 = (result>>24) & 0xff;
+
+
+
+Stone, et. al.              Standards Track                    [Page 14]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+  crc32 = ((byte0 << 24) |
+           (byte1 << 16) |
+           (byte2 << 8)  |
+           byte3);
+  return ( crc32 );
+}
+
+int
+insert_crc32(unsigned char *buffer, unsigned int length)
+{
+  SCTP_message *message;
+  unsigned long crc32;
+  message = (SCTP_message *) buffer;
+  message->common_header.checksum = 0L;
+  crc32 = generate_crc32c(buffer,length);
+  /* and insert it into the message */
+  message->common_header.checksum = htonl(crc32);
+  return 1;
+}
+
+int
+validate_crc32(unsigned char *buffer, unsigned int length)
+{
+  SCTP_message *message;
+  unsigned int i;
+  unsigned long original_crc32;
+  unsigned long crc32 = ~0L;
+
+  /* save and zero checksum */
+  message = (SCTP_message *) buffer;
+  original_crc32 = ntohl(message->common_header.checksum);
+  message->common_header.checksum = 0L;
+  crc32 = generate_crc32c(buffer,length);
+  return ((original_crc32 == crc32)? 1 : -1);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                    [Page 15]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+Authors' Addresses
+著者の連絡先
+
+   Jonathan Stone
+   Room 446, Mail code 9040
+   Gates building 4A
+   Stanford, Ca 94305
+
+   EMail: jonathan@dsg.stanford.edu
+
+
+   Randall R. Stewart
+   24 Burning Bush Trail.
+   Crystal Lake, IL 60012
+   USA
+
+   EMail: rrs@cisco.com
+
+
+   Douglas Otis
+   800 E. Middlefield
+   Mountain View, CA 94043
+   USA
+
+   EMail: dotis@sanlight.net
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                    [Page 16]
+
+RFC 3309                  SCTP Checksum Change            September 2002
+
+
+Full Copyright Statement
+著作権の完全な記述
+(訳注: 原文のみが有効ですので注意してください。)
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+上記の著作権表示とこの段落がコピーや派生物に含まれている限り、全部であれ一部であれ、どんな形の制限もなく、この文書およびその翻訳はコピーされ他の人々に供給してもよいものとし、これについてのコメント、あるいは説明、またはその実装の援助といった派生物も用意され、コピーされ、公開され分配されてもよい。しかしながら、この文書そのものは、インターネット標準プロセスで定義された著作権処理に従わなければならないインターネット標準の開発のために必要な場合、あるいは英語以外の言語に翻訳する際に必要な場合を除き、著作権表示やInternet Societyや他のインターネット機構への参照を削除したりというように、どんな形であれ改変してはならない。
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+上記で認められた制限つき許可は永続するものであり、Internet Society、またはその後継、あるいは譲り受けの団体によって取り消されることはないであろう。
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+この文書およびここに含まれる情報は基本的にそのままの("AS IS")状態で提供され、「The Internet Society、およびInternet Engineering Task Forceは、明示しているか暗示しているかに関わらず一切の保証を放棄する。この保証にはここにある情報を用いることで特定の目的のために商品性や適応性に関するどんな権利もどんな暗示的な保証も侵害しないというような保証を含むがそれに限らない。」
+
+Acknowledgement
+謝辞
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC編集機構への資金提供は現在、Internet Societyによる。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Stone, et. al.              Standards Track                    [Page 17]
+

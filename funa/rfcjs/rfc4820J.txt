@@ -1,0 +1,474 @@
+
+
+
+
+
+
+Network Working Group                                          M. Tuexen
+Request for Comments: 4820            Muenster Univ. of Applied Sciences
+Category: Standards Track                                     R. Stewart
+                                                                  P. Lei
+                                                     Cisco Systems, Inc.
+                                                              March 2007
+
+
+                      Padding Chunk and Parameter
+          for the Stream Control Transmission Protocol (SCTP)
+ストリーム伝送制御プロトコル(SCTP)のためのパディングチャンクおよびパディングパラメータ
+
+Status of This Memo
+このメモのステータス
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+この文書はインターネットコミュニティのためのインターネット標
+準トラックプロトコルを記述し、改善のための議論や提言を求める
+ものである。このプロトコルにおける標準化状態については「イン
+ターネット公式プロトコル標準」(STD 1)の最新エディションを参
+照されたい。この文書の配布に制限はない。
+
+Copyright Notice
+著作権表示
+
+   Copyright (C) The IETF Trust (2007).
+
+(日本語訳について)-----------------------------------------------------
+この日本語訳は舟阪淳一が個人的に訳したものです。誤訳も含まれていると
+思いますので、ご利用の際は注意してください。また不備をみつけられましたら
+ご連絡ください。この注意書きを残していれば、自由に改変、再配布できる
+ものとします。
+連絡先 http://mary.net.info.hiroshima-cu.ac.jp/cgi-bin/mailaccept.pl
+-----------------------------------------------------------------------
+
+Abstract
+概要
+
+   This document defines a padding chunk and a padding parameter and
+   describes the required receiver side procedures.  The padding chunk
+   is used to pad a Stream Control Transmission Protocol (SCTP) packet
+   to an arbitrary size.  The padding parameter is used to pad an SCTP
+   INIT chunk to an arbitrary size.
+
+本文書はパディングチャンクおよびパディングパラメータを定義し、
+受信側で必要な処理を記述する。パディングチャンクはストリーム
+伝送制御プロトコル(SCTP)のパケットを任意のサイズにするための
+詰めものとして使われる。パディングパラメータはSCTPのINITチャ
+ンクを任意のサイズにするための詰めものとして用いられる。
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . . 2
+   2.  Conventions . . . . . . . . . . . . . . . . . . . . . . . . . . 2
+   3.  Padding Chunk (PAD) . . . . . . . . . . . . . . . . . . . . . . 2
+   4.  Padding Parameter (PAD) . . . . . . . . . . . . . . . . . . . . 3
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 4
+     5.1.  A New Chunk Type  . . . . . . . . . . . . . . . . . . . . . 4
+     5.2.  A New Parameter Type  . . . . . . . . . . . . . . . . . . . 4
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . . . 4
+   7.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . 4
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+     8.1.  Normative References  . . . . . . . . . . . . . . . . . . . 5
+     8.2.  Informative References  . . . . . . . . . . . . . . . . . . 5
+
+
+
+
+
+
+Tuexen, et al.              Standards Track                     [Page 1]
+
+RFC 4820          Padding Chunk and Parameter for SCTP        March 2007
+
+
+1.  Introduction
+はじめに
+
+   This document defines a padding chunk and a padding parameter and
+   describes the required receiver side procedures.  The padding chunk
+   is used to pad an SCTP packet to an arbitrary size.  The padding
+   parameter is used to pad an SCTP INIT chunk to an arbitrary size.
+   The usage of the PAD chunk for path MTU discovery is described in
+   PMTU [4].  The inappropriate usage of the PAD parameter or PAD chunk
+   can result in wasted bandwidth.
+
+本文書はパディングチャンクおよびパディングパラメータを定義し、
+受信側で必要な処理を記述する。パディングチャンクはSCTPのパケッ
+トを任意のサイズにするための詰めものとして使われる。パディン
+グパラメータはSCTPのINITチャンクを任意のサイズにするための詰
+めものとして用いられる。経路MTU探索のためのPADチャンクの使い
+方はPMTU [4]に記述されている。PADパラメータやPADチャンクの不
+適切な使用は帯域の浪費という結果になり得る。
+
+2.  Conventions
+慣行事項
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL", when they appear in this document, are to be interpreted
+   as described in RFC 2119 [1].
+
+この文書内にMUST、MUST NOT、REQUIRED、SHALL、SHALL NOT、
+SHOULD、SHOULD NOT、RECOMMENDED、NOT RECOMMENDED、MAY、およ
+びOPTIONALというキーワードが出てきたときは、RFC2119 [1]で記
+述されているように解釈するものとする。
+
+3.  Padding Chunk (PAD)
+パディングチャンク (PAD)
+
+   This chunk is used to pad an SCTP packet.  A PAD chunk can be used to
+   enlarge the packet by 4 to 65536 bytes in steps of 4 bytes.  An SCTP
+   packet MAY contain multiple PAD chunks.
+
+このチャンクはSCTPパケットを埋めるのに使われる。PADチャンク
+は4から65536バイトの間で4バイト間隔となる大きさだけ、パケッ
+トを大きくするのに使える。ひとつのSCTPパケットは複数のPADチャ
+ンクを含んでよい(MAY)。
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Type = 0x84   |   Flags=0     |             Length            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   \                         Padding Data                          /
+   /                                                               \
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                                 Figure 1
+
+   Type: 1 byte (unsigned integer)
+型: 1バイト (符号なし整数)
+      This value MUST be set to 0x84 for all PAD chunks.
+
+この値は全てのPADチャンクについて0x84に設定しなければならな
+い(MUST)。
+
+   Flags: 1 byte (unsigned integer)
+フラグ: 1バイト (符号なし整数)
+      This value SHOULD be set to zero on transmit and MUST be ignored
+      on receipt.
+
+この値は送信にあたっては0に設定すべきであり(SHOULD)、受信に
+おいては無視しなければならない(MUST)。
+
+   Length: 2 bytes (unsigned integer)
+長さ: 2バイト (符号なし整数)
+      This value holds the length of the Padding Data plus 4.
+
+この値はパディングデータの長さに4を足したものである。
+(訳注: 4はパディングチャンクのヘッダの大きさである。)
+
+
+
+
+Tuexen, et al.              Standards Track                     [Page 2]
+
+RFC 4820          Padding Chunk and Parameter for SCTP        March 2007
+
+
+   Padding Data: n bytes (unsigned integer)
+      This holds the Padding Data.  The Padding Data MUST be ignored by
+      the receiver.
+
+この部分がパディングのデータを保持する。パディングのデータは
+受信者が無視しなければならない(MUST)。
+
+   The receiver of the PAD chunk MUST discard this chunk and continue
+   processing the rest of the chunks in the packet.  Please note that
+   this is also the required processing behavior for any unknown chunk
+   having the same highest-order two bits of the type as the PAD chunk.
+
+PADチャンクの受信者はこのチャンクを破棄し、このパケット内の
+残りのチャンクの処理を継続しなければならない(MUST)。これはタ
+イプの高位2ビットがPADチャンクと同じである未知チャンクについ
+て必要な処理のふるまいでもあることに注意されたい。
+
+4.  Padding Parameter (PAD)
+パディングパラメータ (PAD)
+
+   This parameter is used to pad an INIT chunk.  A PAD parameter can be
+   used to enlarge the INIT chunk by 4 bytes as the minimum to the
+   maximum size of the INIT chunk in steps of 4 bytes.  An INIT chunk
+   MAY contain multiple PAD parameters.
+
+このパラメータはINITチャンクを埋めるのに用いる。PADパラメー
+タはINITチャンクを最小で4からINITの最大サイズまで4バイトおき
+の増分で、INITチャンクを大きくするのに使うことができる。ひと
+つのINITチャンクは複数のPADパラメータを含んでよい(MAY)。
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Parameter Type = 0x8005   |       Parameter Length        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   /                                                               /
+   \                          Padding Data                         \
+   /                                                               /
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                                 Figure 2
+
+   Parameter Type: 2 bytes (unsigned integer)
+パラメータ型: 2バイト (符号なし整数)
+      This value MUST be set to 0x8005.
+
+この値は0x8005に設定しなければならない(MUST)。
+
+   Parameter Length: 2 bytes (unsigned integer)
+パラメータ長: 2バイト (符号なし整数)
+      This value holds the length of the Padding Data plus 4.
+
+この値はパディングデータに4を足した長さを保持する。
+(訳注: 4バイトはTLVパラメータのTL部のバイト数。)
+
+   The PAD parameter MAY be included only in the INIT chunk.  It MUST
+   NOT be included in any other chunk.  The receiver of the PAD
+   parameter MUST silently discard this parameter and continue
+   processing the rest of the INIT chunk.  This means that the size of
+   the generated COOKIE parameter in the INIT-ACK MUST NOT depend on the
+   existence of the PAD parameter in the INIT chunk.  A receiver of a
+   PAD parameter MUST NOT include the PAD parameter within any State
+   Cookie parameter it generates.
+
+PADパラメータはINITチャンクにのみ含まれてよい(MAY)。その他の
+チャンクに含まれてはならない(MUST NOT)。PADパラメータの受信
+者はこのパラメータを静かに破棄し、INITチャンクの残りの処理を
+継続しなければならない(MUST)。これはINIT-ACKの中の生成された
+COOKIEパラメータのサイズはINITチャンクの中のPADパラメータの
+存在に依存してはならない(MUST NOT)ことを意味する。PADパラメー
+タの受信者は生成するどの状態クッキーにもPADパラメータを含め
+てはならない(MUST NOT)。
+
+
+
+
+
+
+
+Tuexen, et al.              Standards Track                     [Page 3]
+
+RFC 4820          Padding Chunk and Parameter for SCTP        March 2007
+
+
+5.  IANA Considerations
+IANAにまつわる考慮事項
+
+   This document is the reference for all registrations described in
+   this section.  All registrations have been listed in the document
+   available at sctp-parameters [3].  The changes are described below.
+
+本文書は本節に記述されている全ての登録事項のリファレンスであ
+る。全ての登録事項はsctp-parameters [3]で利用可能な文書に挙
+げられている。その変更点を以下に記述する。
+
+5.1.  A New Chunk Type
+新しいチャンク型
+
+   A chunk type for the PAD chunk has been assigned by IANA.  The value
+   has been assigned as described in Figure 1.  The following has been
+   added to the "CHUNK TYPES" table of sctp-parameters [3]:
+
+PADチャンクのためのチャンク型がIANAにより割当てられた。値は
+Figure 1に記述されたように割当てられている。以下が
+sctp-parameters [3]の"チャンク型"の表に追加された。
+
+   CHUNK TYPES
+
+   ID Value    Chunk Type                                     Reference
+   --------    ----------                                     ---------
+   132(0x84)   Padding Chunk (PAD)                            [RFC4820]
+
+5.2.  A New Parameter Type
+新しいパラメータ型
+
+   A parameter type has been assigned for the PAD parameter by IANA.
+   The value has been assigned as described in Figure 2.  The following
+   has been added to the "CHUNK PARAMETER TYPES" table in sctp-
+   parameters [3]:
+
+IANAによって、PADパラメータのためにパラメータ型がひとつ割当
+てられた。この値はFigure 2に記述されたように割当てられる。以
+下がsctp-parameters [3]の中の"チャンクパラメータ型"の表に加
+えられた。
+
+   INIT Chunk Parameter Types
+
+   Chunk Parameter Type                       Value
+   --------------------                       -----
+   Padding                            32773(0x8005)
+
+6.  Security Considerations
+セキュリティについての考慮
+
+   This document does not add any additional security considerations to
+   the ones given in RFC 2960 [2].
+
+本文書がRFC 2960 [2]で与えられたセキュリティについての考慮に
+追加するものは何もない。
+
+7.  Acknowledgments
+謝辞
+
+   The authors wish to thank Matthew J. Zekauskas and Lars Eggert for
+   their invaluable comments.
+
+著者らはMatthew J. ZekauskasおよびLars Eggertに貴重なコメン
+トをいただいたことを感謝したい。
+
+
+
+
+
+
+
+
+
+Tuexen, et al.              Standards Track                     [Page 4]
+
+RFC 4820          Padding Chunk and Parameter for SCTP        March 2007
+
+
+8.  References
+参考文献
+
+8.1.  Normative References
+規範に従う参考文献
+
+   [1]  Bradner, S., "Key words for use in RFCs to Indicate Requirement
+        Levels", BCP 14, RFC 2119, March 1997.
+
+   [2]  Stewart, R., Xie, Q., Morneault, K., Sharp, C., Schwarzbauer,
+        H., Taylor, T., Rytina, I., Kalla, M., Zhang, L., and V. Paxson,
+        "Stream Control Transmission Protocol", RFC 2960, October 2000.
+
+8.2.  Informative References
+情報提供の文献
+
+   [3]  "IANA registry",
+        <http://www.iana.org/assignments/sctp-parameters>.
+
+   [4]  Mathis, M. and J. Heffner, "Packetization Layer Path MTU
+        Discovery", RFC 4821, March 2007.
+
+Authors' Addresses
+著者の連絡先
+
+   Michael Tuexen
+   Muenster Univ. of Applied Sciences
+   Stegerwaldstr. 39
+   48565 Steinfurt
+   Germany
+
+   EMail: tuexen@fh-muenster.de
+
+
+   Randall R. Stewart
+   Cisco Systems, Inc.
+   4875 Forest Drive
+   Suite 200
+   Columbia, SC  29206
+   USA
+
+   EMail: rrs@cisco.com
+
+
+   Peter Lei
+   Cisco Systems, Inc.
+   955 Happfield Dr.
+   Arlington Heights, IL  60004
+   US
+
+   Phone: +1 773 695-8201
+   EMail: peterlei@cisco.com
+
+
+
+Tuexen, et al.              Standards Track                     [Page 5]
+
+RFC 4820          Padding Chunk and Parameter for SCTP        March 2007
+
+
+Full Copyright Statement
+著作権の完全な記述
+(訳注: 原文のみが有効ですので注意してください。)
+
+   Copyright (C) The IETF Trust (2007).
+
+   This document is subject to the rights, licenses and restrictions
+   contained in BCP 78, and except as set forth therein, the authors
+   retain all their rights.
+
+本文書はBCP 78に含まれる権利、ライセンス、および制限の対象で
+あり、特記されたもの以外は著者らが全ての権利を保持する。
+
+   This document and the information contained herein are provided on an
+   "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+   OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY, THE IETF TRUST AND
+   THE INTERNET ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF
+   THE INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+   WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+Intellectual Property
+知的財産
+
+   The IETF takes no position regarding the validity or scope of any
+   Intellectual Property Rights or other rights that might be claimed to
+   pertain to the implementation or use of the technology described in
+   this document or the extent to which any license under such rights
+   might or might not be available; nor does it represent that it has
+   made any independent effort to identify any such rights.  Information
+   on the procedures with respect to rights in RFC documents can be
+   found in BCP 78 and BCP 79.
+
+この文書で記述された技術の実装や使用、またはライセンスが利用
+可能あるいは不可能となる拡張に付随すると主張するかもしれない
+知的財産権またはその他の権利の正当性や範囲に関してはいかなる
+立場もとらない。またこのような権利を識別するためにそれぞれ独
+立した努力を払うということを示すわけでもない。RFC文書におけ
+る権利に関する手続きの情報はBCP 78およびBCP 79にある。
+
+   Copies of IPR disclosures made to the IETF Secretariat and any
+   assurances of licenses to be made available, or the result of an
+   attempt made to obtain a general license or permission for the use of
+   such proprietary rights by implementers or users of this
+   specification can be obtained from the IETF on-line IPR repository at
+   http://www.ietf.org/ipr.
+
+IETF事務局によってなされたIPR(知的財産権)開示の控えおよび利
+用可能なライセンスについての保証、あるいは実装者やユーザがこ
+の仕様の利用のための一般的なライセンスまたは許可を得るための
+試みの結果は http://www.ietf.org/ipr にあるIETFオンラインIPR
+リボジトリから取得できる。
+
+   The IETF invites any interested party to bring to its attention any
+   copyrights, patents or patent applications, or other proprietary
+   rights that may cover technology that may be required to implement
+   this standard.  Please address the information to the IETF at
+   ietf-ipr@ietf.org.
+
+IETFはこの標準を実装するために必要となるかもしれない技術をカ
+バーするような著作権、特許または特許応用、あるいは他の財産権
+に注意を払ってくれる興味をもった団体を招いている。
+ietr-ipr@ietr.orgのアドレスにIETFへのそのような情報を提供し
+ていただきたい。
+
+Acknowledgement
+謝辞
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC編集者職務への資金提供は現在、Internet Societyによる。
+
+
+
+
+
+
+Tuexen, et al.              Standards Track                     [Page 6]
+

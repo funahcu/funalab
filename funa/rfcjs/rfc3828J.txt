@@ -1,0 +1,805 @@
+
+
+
+
+
+
+Network Working Group                                        L-A. Larzon
+Request for Comments: 3828                Lulea University of Technology
+Category: Standards Track                                   M. Degermark
+                                                                 S. Pink
+                                               The University of Arizona
+                                                       L-E. Jonsson, Ed.
+                                                                Ericsson
+                                                       G. Fairhurst, Ed.
+                                                  University of Aberdeen
+                                                               July 2004
+
+
+           The Lightweight User Datagram Protocol (UDP-Lite)
+軽いUDP(UDP-Lite)
+
+Status of this Memo
+このメモのステータス
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+この文書はインターネットコミュニティのためのインターネット標準トラックプロトコルを記述するものであり、改善のための議論や提案をお願いするものである。このプロトコルについての標準化プロセスにおけるステータスは"インターネット公式プロトコル標準(Internet Official Protocol Standards)" (STD 1)の最新版を参照いただきたい。このメモの配布に制限はない。
+
+Copyright Notice
+著作権表示
+
+   Copyright (C) The Internet Society (2004).
+
+Abstract
+概要
+
+   This document describes the Lightweight User Datagram Protocol (UDP-
+   Lite), which is similar to the User Datagram Protocol (UDP) (RFC
+   768), but can also serve applications in error-prone network
+   environments that prefer to have partially damaged payloads delivered
+   rather than discarded.  If this feature is not used, UDP-Lite is
+   semantically identical to UDP.
+
+この文書は軽いユーザデータグラムプロトコル(UDP-Lite)を記述する。UDP-Liteはユーザデータグラムプロトコル(UDP)(RFC768)と似ているが、エラーの起きるネットワーク環境において部分的に損傷したペイロードを破棄するより渡したいアプリケーションにもサービスを提供できる。この機能が使われない場合、UDP-Liteは意味的にUDPと同一である。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Larzon, et al.              Standards Track                     [Page 1]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+Table of Contents
+
+   1.  Introduction . . . . . . . . . . . . . . . . . . . . . . . . .  2
+   2.  Terminology. . . . . . . . . . . . . . . . . . . . . . . . . .  3
+   3.  Protocol Description . . . . . . . . . . . . . . . . . . . . .  3
+       3.1.  Fields . . . . . . . . . . . . . . . . . . . . . . . . .  4
+       3.2.  Pseudo Header. . . . . . . . . . . . . . . . . . . . . .  5
+       3.3.  Application Interface. . . . . . . . . . . . . . . . . .  5
+       3.4.  IP Interface . . . . . . . . . . . . . . . . . . . . . .  6
+       3.5.  Jumbograms . . . . . . . . . . . . . . . . . . . . . . .  6
+   4.  Lower Layer Considerations . . . . . . . . . . . . . . . . . .  6
+   5.  Compatibility with UDP . . . . . . . . . . . . . . . . . . . .  7
+   6.  Security Considerations. . . . . . . . . . . . . . . . . . . .  8
+   7.  IANA Considerations. . . . . . . . . . . . . . . . . . . . . .  8
+   8.  References . . . . . . . . . . . . . . . . . . . . . . . . . .  9
+       8.1.  Normative References . . . . . . . . . . . . . . . . . .  9
+       8.2.  Informative References . . . . . . . . . . . . . . . . .  9
+   9.  Acknowledgements . . . . . . . . . . . . . . . . . . . . . . . 10
+   10. Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . 11
+   11. Full Copyright Statement . . . . . . . . . . . . . . . . . . . 12
+
+1.  Introduction
+1. はじめに
+
+   This document describes a new transport protocol, UDP-Lite, (also
+   known as UDPLite).  This new protocol is based on three observations:
+
+この文書は新しいトランスポートプロトコルUDP-Lite(UDPLiteとしても知られている)を記述する。この新しいプロトコルは3つの観測に基づいている。
+
+   First, there is a class of applications that benefit from having
+   damaged data delivered rather than discarded by the network.  A
+   number of codecs for voice and video fall into this class (e.g., the
+   AMR speech codec [RFC-3267], the Internet Low Bit Rate Codec [ILBRC],
+   and error resilient H.263+ [ITU-H.263], H.264 [ITU-H.264; H.264], and
+   MPEG-4 [ISO-14496] video codecs).  These codecs may be designed to
+   cope better with errors in the payload than with loss of entire
+   packets.
+
+第1に、ネットワークにおいて損傷したデータを破棄するより渡すほうが有益であるアプリケーションクラスがあることである。多くの音声、動画コーデックがこのクラスに属する (例えばAMRスピーチコーデック(the AMR speech codec) [RFC-3267], インターネット低ビットレートコーデック(the Internet Low Bit Rate Codec)[ILBRC], エラー対応H.263+(error resilient H.263+) [ITU-H.263], H.264 [ITU-H.264; H.264], およびMPEG-4動画コーデック(MPEG-4 [ISO-14496] video codecs))。これらのコーデックはパケット全体の損失よりはペイロード中に含まれたエラーの方をうまく処理するために設計されているだろう。
+
+   Second, all links that support IP transmission should use a strong
+   link layer integrity check (e.g., CRC-32 [RFC-3819]), and this MUST
+   be used by default for IP traffic.  When the under-lying link
+   supports it, certain types of traffic (e.g., UDP-Lite) may benefit
+   from a different link behavior that permits partially damaged IP
+   packets to be forwarded when requested [RFC-3819].  Several radio
+   technologies (e.g., [3GPP]) support this link behavior when operating
+   at a point where cost and delay are sufficiently low.  If error-prone
+   links are aware of the error sensitive portion of a packet, it is
+   also possible for the physical link to provide greater protection to
+   reduce the probability of corruption of these error sensitive bytes
+   (e.g., the use of unequal Forward Error Correction).
+
+第2に、IP転送をサポートするすべてのリンクは強いリンク層完全性確認(例えば, CRC-32 [RFC-3819])を用いるべきであり、これはIPトラフィックのためにデフォルトで使われなければならない(MUST)。下層がこれをサポートするとき、ある種のトラフィック(例えば, UDP-Lite)は、要求があったときに部分的に損傷したIPパケットを転送することを許す異ったリンクふるまいにより恩恵を受ける[RFC-3819]。いくつかの無線技術(例えば[3GPP])はコストと遅延が十分小さいポイントにおいて動作する際、このリンクふるまいをサポートする。もしエラーの起きるリンクがパケットの中でエラーに敏感な部分を認識すれば、物理リンクはこれらのエラーに敏感なバイト部分における損傷を減らすようにより強い防御を提供することもできる(例えば、等しくないForward Error Correctionの使用)。
+
+
+Larzon, et al.              Standards Track                     [Page 2]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+   Third, intermediate layers (i.e., IP and the transport layer
+   protocols) should not prevent error-tolerant applications from
+   running well in the presence of such links.  IP is not a problem in
+   this regard, since the IP header has no checksum that covers the IP
+   payload.  The generally available transport protocol best suited for
+   these applications is UDP, since it has no overhead for
+   retransmission of erroneous packets, in-order delivery, or error
+   correction.  In IPv4 [RFC-791], the UDP checksum covers either the
+   entire packet or nothing at all.  In IPv6 [RFC-2460], the UDP
+   checksum is mandatory and must not be disabled.  The IPv6 header does
+   not have a header checksum and it was deemed necessary to always
+   protect the IP addressing information by making the UDP checksum
+   mandatory.
+
+第3に、中間層(すなわちIPとトランスポート層プロトコル)はエラーの起きるリンクにおいてエラー耐性のあるアプリケーションがうまく動作することを妨げるべきではない。この観点ではIPは問題ではない。なぜならIPヘッダはIPペイロードをカバーするチェックサムを持っていないからである。これらのアプリケーションに最もふさわしい一般的に利用可能なトランスポートプロトコルはUDPである。なぜならUDPはエラーの起きたパケットについての再送オーバヘッドを持たず、順序通りの配送機能も持たず、エラー訂正機能も持たないからである。IPv4 [RFC-791]においてUDPチェックサムはパケット全体をカバーするか、あるいは全くカバーしないかである。IPv6 [RFC-2460]においてUDPチェックサムは必須であり無効化してはならない。IPv6ヘッダはヘッダチェックサムを持たないため、UDPチェックサムを必須にすることによりIPアドレス情報を常に保護する必要があると考えられた。
+
+   A transport protocol is needed that conforms to the properties of
+   link layers and applications described above [LDP99].  The error-
+   detection mechanism of the transport layer must be able to protect
+   vital information such as headers, but also to optionally ignore
+   errors best dealt with by the application.  The set of octets to be
+   verified by the checksum is best specified by the sending
+   application.
+
+トランスポートプロトコルはリンク層やアプリケーションの上記の性質に従う必要がある[LDP99]。トランスポート層におけるエラー検出メカニズムはヘッダのような致命的な情報を保護できなければならないが、またオプションとしてアプリケーションが処理するのが一番よいエラーを無視できなければならない。チェックサムにより検証するオクテットのセットは送信アプリケーションが指定するのが最善である。
+
+   UDP-Lite provides a checksum with an optional partial coverage.  When
+   using this option, a packet is divided into a sensitive part (covered
+   by the checksum) and an insensitive part (not covered by the
+   checksum).  Errors in the insensitive part will not cause the packet
+   to be discarded by the transport layer at the receiving end host.
+   When the checksum covers the entire packet, which should be the
+   default, UDP-Lite is semantically identical to UDP.
+
+UDP-Liteはチェックサムに選択的な範囲指定を提供する。このオプションが使われるとき、パケットは敏感な部分(チェックサムによりカバーされる)と敏感でない部分(チェックサムによりカバーされない)に分けられる。敏感でない部分のエラーは、受信端末のトランスポート層によってこのパケットが破棄される原因とはならない。このチェックサムがパケット全体をカバーするとき、これがデフォルトであるべきだが、UDP-Liteは意味的にUDPと同一である。
+
+   Compared to UDP, the UDP-Lite partial checksum provides extra
+   flexibility for applications that want to define the payload as
+   partially insensitive to bit errors.
+
+UDPと比較して、UDP-Liteの部分的チェックサムはペイロードを部分的にビットエラーに対して敏感でないと定義したいアプリケーションに特別な柔軟性を提供する。
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+   document are to be interpreted as described in [RFC-2119].
+
+キーワード"MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", および"OPTIONAL"は[RFC-2119]で記述されているように解釈するものとする。
+
+3.  Protocol Description
+3. プロトコルの記述
+
+   The UDP-Lite header is shown in figure 1.  Its format differs from
+   UDP in that the Length field has been replaced with a Checksum
+   Coverage field.  This can be done since information about UDP packet
+   length can be provided by the IP module in the same manner as for TCP
+   [RFC-793].
+
+UDP-Liteのヘッダを図1に示す。このフォーマットはUDPと比べて、長さ(Length)フィールドがチェックサムカバー範囲(Checksum Coverage)フィールドに置きかえられた点が異なる。これができるのはUDPパケット長についての情報がTCP [RFC-793]と同様の方法によりIPモジュールにより与えられることによる。
+
+
+
+Larzon, et al.              Standards Track                     [Page 3]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+       0              15 16             31
+      +--------+--------+--------+--------+
+      |     Source      |   Destination   |
+      |      Port       |      Port       |
+      +--------+--------+--------+--------+
+      |    Checksum     |                 |
+      |    Coverage     |    Checksum     |
+      +--------+--------+--------+--------+
+      |                                   |
+      :              Payload              :
+      |                                   |
+      +-----------------------------------+
+
+      Figure 1: UDP-Lite Header Format
+図1: UDP-Liteのヘッダフォーマット
+
+3.1.  Fields
+3.1. フィールド
+
+   The fields Source Port and Destination Port are defined as in the UDP
+   specification [RFC-768].  UDP-Lite uses the same set of port number
+   values assigned by the IANA for use by UDP.
+
+送信元ポートと受信先ポートのフィールドはUDPの仕様[RFC-768]で定義されている。UDP-LiteはUDPの使用のためにIANAによって割り当てられているポート番号と同じセットを用いる。
+
+   Checksum Coverage is the number of octets, counting from the first
+   octet of the UDP-Lite header, that are covered by the checksum.  The
+   UDP-Lite header MUST always be covered by the checksum.  Despite this
+   requirement, the Checksum Coverage is expressed in octets from the
+   beginning of the UDP-Lite header in the same way as for UDP.  A
+   Checksum Coverage of zero indicates that the entire UDP-Lite packet
+   is covered by the checksum.  This means that the value of the
+   Checksum Coverage field MUST be either 0 or at least 8.  A UDP-Lite
+   packet with a Checksum Coverage value of 1 to 7 MUST be discarded by
+   the receiver.  Irrespective of the Checksum Coverage, the computed
+   Checksum field MUST include a pseudo-header, based on the IP header
+   (see below).  UDP-Lite packets with a Checksum Coverage greater than
+   the IP length MUST also be discarded.
+
+チェックサムカバー範囲は、チェックサムがカバーすることになるUDP-Liteヘッダの最初のオクテットから数えたバイト数である。UDP-Liteヘッダは常にチェックサムによりカバーされなければならない(MUST)。この制約にも拘らず、チェックサムカバー範囲はUDPと同様にUDP-Liteヘッダの最初からのオクテット数で表される。チェックサムカバー範囲がゼロというのはUDP-Liteパケット全体がチェックサムによりカバーされることを示す。これはチェックサムカバー範囲フィールドは0、あるいは8以上でなければならない(MUST)ことを意味する。チェックサムカバー範囲が1から7の間の値を持つUDP-Liteパケットは受信者により破棄されねばならない(MUST)。チェックサムカバー範囲にかかわらず、計算されたチェックサムフィールドはIPヘッダに基づく擬似ヘッダを含まなければならない(MUST)(以下参照)。IPの長さを越えるチェックサムカバー範囲を持つUDP-Liteパケットもまた破棄されねばならない(MUST)。
+
+   The Checksum field is the 16-bit one's complement of the one's
+   complement sum of a pseudo-header of information collected from the
+   IP header, the number of octets specified by the Checksum Coverage
+   (starting at the first octet in the UDP-Lite header), virtually
+   padded with a zero octet at the end (if necessary) to make a multiple
+   of two octets [RFC-1071].  Prior to computation, the checksum field
+   MUST be set to zero.  If the computed checksum is 0, it is
+   transmitted as all ones (the equivalent in one's complement
+   arithmetic).
+
+チェックサムフィールドは擬似ヘッダの16ビットの1の補数和の1の補数である。擬似ヘッダの情報はIPヘッダ、チェックサムカバー範囲で指定されたオクテット数(UDP-Liteヘッダの最初のオクテットから始めて)、および2バイトの倍数となるように(必要なら)仮想的に埋める0のオクテットから収集する[RFC-1071]。計算の前にチェックサムフィールドはゼロに設定されなければならない(MUST)。計算されたチェックサムが0の場合、全て1のビットで送信される(1の補数計算と同等)。
+
+   Since the transmitted checksum MUST NOT be all zeroes, an application
+   using UDP-Lite that wishes to have no protection of the packet
+   payload should use a Checksum Coverage value of 8.  This differs
+
+
+
+Larzon, et al.              Standards Track                     [Page 4]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+   from the use of UDP over IPv4 in that the minimal UDP-Lite checksum
+   always covers the UDP-Lite protocol header, which includes the
+   Checksum Coverage field.
+
+転送されるチェックサムは全て0のビットであってはならない(MUST)ので、UDP-Liteを用いるアプリケーションでパケットペイロードに保護をかけたくないものはチェックサムカバー範囲の値として8を使うべきである。これは最小のUDP-Liteチェックサムも常にUDP-Liteプロトコルのヘッダをカバーし、それはチェックサムカバー範囲フィールドを含むという点でIPv4の上のUDPの使用と異なる。
+
+
+3.2.  Pseudo Header
+擬似ヘッダ
+
+   UDP and UDP-Lite use the same conceptually prefixed pseudo header
+   from the IP layer for the checksum.  This pseudo header is different
+   for IPv4 and IPv6.  The pseudo header of UDP-Lite is different from
+   the pseudo header of UDP in one way: The value of the Length field of
+   the pseudo header is not taken from the UDP-Lite header, but rather
+   from information provided by the IP module.  This computation is done
+   in the same manner as for TCP [RFC-793], and implies that the Length
+   field of the pseudo header includes the UDP-Lite header and all
+   subsequent octets in the IP payload.
+
+UDPとUDP-LiteはいずれもチェックサムのためにIP層からの情報を概念的に前につけた擬似ヘッダを用いる。この擬似ヘッダはIPv4とIPv6で異なる。UDP-Liteの擬似ヘッダはUDPの擬似ヘッダとある一点で異なる。それは擬似ヘッダの長さフィールドの値がUDP-Liteヘッダからとられるのではなく、IPモジュールにより提供される情報からとるということである。この計算はTCP[RFC-793]のためのものと同じ方法によりなされ、擬似ヘッダの長さフィールドがUDP-Liteヘッダと後続の全てのIPペイロードの中のオクテットを含むことを示す。
+
+3.3.  Application Interface
+3.3. アプリケーションインタフェース
+
+   An application interface should allow the same operations as for UDP.
+   In addition to this, it should provide a way for the sending
+   application to pass the Checksum Coverage value to the UDP-Lite
+   module.  There should also be a way to pass the Checksum Coverage
+   value to the receiving application, or at least let the receiving
+   application block delivery of packets with coverage values less than
+   a value provided by the application.
+
+アプリケーションインタフェースはUDPと同じ操作を可能にするべきである。これに加え、UDP-Liteモジュールにチェックサムカバー範囲の値を渡す方法を送信アプリケーションに対して提供するべきである。またチェックサムカバー範囲の値を受信アプリケーションに渡す、あるいは少なくともアプリケーションによって与えられた値より小さなカバー範囲値をもったパケットの配送を受信アプリケーションに阻止させる方法も用意すべきである。
+
+   It is RECOMMENDED that the default behavior of UDP-Lite be set to
+   mimic UDP by having the Checksum Coverage field match the length of
+   the UDP-Lite packet and verify the entire packet.  Applications that
+   wish to define the payload as partially insensitive to bit errors
+   (e.g., error tolerant codecs using RTP [RFC-3550]) should do this by
+   an explicit system call on the sender side.  Applications that wish
+   to receive payloads that were only partially covered by a checksum
+   should inform the receiving system by an explicit system call.
+
+UDP-Liteのデフォルトのふるまいはチェックサムカバー範囲フィールドをUDP-Liteパケットの長さと一致させてパケット全体を検証することによりUDPを真似るようにすることが推奨される(RECOMMENDED)。ペイロードをビットエラーに対し部分的に敏感でないと定義したいアプリケーション(例えばRTP [RFC-3550]を用いたエラー耐性コーデック)は送信側において明示的なシステムコールによりこれを行うべきである。チェックサムにより部分的にしかカバーされていないペイロードを受信したいアプリケーションは明示的なシステムコールにより受信システムに通知するべきである。
+
+   The characteristics of the links forming an Internet path may vary
+   greatly.  It is therefore difficult to make assumptions about the
+   level or patterns of errors that may occur in the corruption
+   insensitive part of the UDP-Lite payload.  Applications that use
+   UDP-Lite should not make any assumptions regarding the correctness of
+   the received data beyond the position indicated by the Checksum
+   Coverage field, and should, if necessary, introduce their own
+   appropriate validity checks.
+
+インターネット経路を構成するリンクの性質は大きく変化するだろう。それゆえUDP-Liteペイロードの損傷に敏感でない部分に起きるかもしれないエラーのレベルやパターンについて仮定をおくことは難しい。UDP-Liteを利用するアプリケーションはチェックサムカバー範囲フィールドにより示された場所を越えた部分で受信されたデータの正しさに関していかなる仮定もおくべきではなく、また必要なら自身にふさわしい検証方法を導入するべきである。
+
+
+
+
+
+
+Larzon, et al.              Standards Track                     [Page 5]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+3.4.  IP Interface
+3.4. IPインタフェース
+
+   As for UDP, the IP module must provide the pseudo header to the UDP-
+   Lite protocol module (known as the UDPLite module).  The UDP-Lite
+   pseudo header contains the IP addresses and protocol fields of the IP
+   header, and also the length of the IP payload, which is derived from
+   the Length field in the IP header.
+
+UDPに関していえばIPモジュールはUDP-Liteプロトコルモジュール(UDPLiteモジュールとして知られる)に擬似ヘッダを提供しなければならない。UDP-Lite擬似ヘッダはIPヘッダのIPアドレスとプロトコルフィールド、およびIPヘッダの長さ(Length)フィールドから導かれるIPペイロード長を含む。
+
+   The sender IP module MUST NOT pad the IP payload with extra octets,
+   since the length of the UDP-Lite payload delivered to the receiver
+   depends on the length of the IP payload.
+
+送信IPモジュールはIPペイロードを余分なオクテットで埋めてはならない(MUST NOT)。なぜなら受信者に渡されるUDP-Liteペイロードの長さはIPペイロードの長さに依存するからである。
+
+3.5.  Jumbograms
+3.5. ジャンボグラム
+
+   The Checksum Coverage field is 16 bits and can represent a Checksum
+   Coverage value of up to 65535 octets.  This allows arbitrary checksum
+   coverage for IP packets, unless they are Jumbograms.  For Jumbograms,
+   the checksum can cover either the entire payload (when the Checksum
+   Coverage field has the value zero), or else at most the initial 65535
+   octets of the UDP-Lite packet.
+
+チェックサムカバー範囲フィールドは16ビットであり、チェックサムカバー範囲の値は65535オクテットまで表すことができる。これはIPパケットがジャンボグラムでないかぎり任意のチェックサムカバー範囲を可能とする。ジャンボグラムに対しては、チャックサムはペイロード全体を(チェックサムカバー範囲フィールドが0の値をとるとき)、あるいはさもなければ最大でもUDP-Liteパケットの最初の65535オクテットをカバーすることができる。
+
+4.  Lower Layer Considerations
+4. 下層についての考察
+
+   Since UDP-Lite can deliver packets with damaged payloads to an
+   application that wishes to receive them, frames carrying UDP-Lite
+   packets need not be discarded by lower layer protocols when there are
+   errors only in the insensitive part.  For a link that supports
+   partial error detection, the Checksum Coverage field in the UDP-Lite
+   header MAY be used as a hint of where errors do not need to be
+   detected.  Lower layers MUST use a strong error detection mechanism
+   [RFC-3819] to detect at least errors that occur in the sensitive part
+   of the packet, and discard damaged packets.  The sensitive part
+   consists of the octets between the first octet of the IP header and
+   the last octet identified by the Checksum Coverage field.  The
+   sensitive part would thus be treated in exactly the same way as for a
+   UDP packet.
+
+UDP-Liteは損傷を受けたペイロードを持つパケットを受信したいアプリケーションに渡すことができるため、UDP-Liteパケットを運ぶフレームは敏感でない部分でのみエラーが起きたときには下層プロトコルにより破棄される必要はない。部分的なエラー検出をサポートするリンクでは、UDP-Liteヘッダの中のチェックサムカバー範囲フィールドを、どこのエラーを検出する必要がないかについてのヒントとして用いるかもしれない。下層はパケットの敏感な部分で起きたエラーを少なくとも検出し損傷したパケットを破棄するために強いエラー検出メカニズム[RFC-3819]を用いなければならない(MUST)。敏感な部分は、IPヘッダの最初のオクテットからチェックサムカバー範囲フィールドで指定される最後のオクテットまでのオクテットから成る。敏感な部分はこのようにUDPパケットと正確に同じ方法で扱われるだろう。
+
+   Link layers that do not support partial error detection suitable for
+   UDP-Lite, as described above, MUST detect errors in the entire UDP-
+   Lite packet, and MUST discard damaged packets [RFC-3819].  The whole
+   UDP-Lite packet is thus treated in exactly the same way as a UDP
+   packet.
+
+UDP-Liteに適した部分的なエラー検出をサポートしないリンク層は上述のように、UDP-Liteパケット全体の中のエラーを検出しなければならず(MUST)、損傷したパケットを破棄しなければならない(MUST)[RFC-3819]。UDP-Liteパケット全体はこのようにUDPパケットと正確に同じ方法で扱われる。
+
+   It should be noted that UDP-Lite would only make a difference to an
+   application if partial error detection, based on the partial checksum
+   feature of UDP-Lite, is implemented also by link layers, as discussed
+   above.  Partial error detection at the link layer would only make a
+   difference when implemented over error-prone links.
+
+UDP-Liteは、部分的なエラー検出がUDP-Liteの部分的チェックサム機能に基づき上で議論したようにリンク層でも実装されている場合にのみ、アプリケーションに差異を生じさせるであろう。リンク層における部分的エラー検出は、エラーの起きやすいリンクで実装されたときのみ違いを生じさせるだろう。
+
+
+Larzon, et al.              Standards Track                     [Page 6]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+5.  Compatibility with UDP
+5. UDPとの互換性
+
+   UDP and UDP-Lite have similar syntax and semantics.  Applications
+   designed for UDP may therefore use UDP-Lite instead, and will by
+   default receive the same full packet coverage.  The similarities also
+   ease implementation of UDP-Lite, since only minor modifications are
+   needed to an existing UDP implementation.
+
+UDPとUDP-Liteは似た文法と意味づけをもっている。それゆえUDPのために設計されたアプリケーションはかわりにUDP-Liteを使うかもしれず、デフォルトではUDPと同様にパケット全体をカバーして受信するだろう。この相似性はまたUDP-Liteの実装を用意にする。なぜなら既存のUDP実装に対してささいな修正しか必要としないからである。
+
+   UDP-Lite has been allocated a separate IP protocol identifier, 136
+   (UDPLite), that allows a receiver to identify whether UDP or UDP-Lite
+   is used.  A destination end host that is unaware of UDP-Lite will, in
+   general, return an ICMP "Protocol Unreachable" or an ICMPv6 "Payload
+   Type Unknown" error message (depending on the IP protocol type).
+   This simple method of detecting UDP-Lite unaware systems is the
+   primary benefit of having separate protocol identifiers.
+
+UDP-Liteには別のIPプロトコル識別子、136(UDPLite)、が割り当てられており、これにより受信者はUDPかUDP-Liteのどちらが使われているかを識別できる。UDP-Liteを認識しない宛先端末は一般に、ICMP「プロトコル到達不可(Protocol Unreachable)」あるいはICMPv6「ペイロードタイプ不明(Payload Type Unknown)」エラーメッセージ(IPプロトコルの種類に応じて)を返すだろう。UDP-Liteを認識しないシステムを検出するためのこの単純な方法は、別のプロトコル識別子を持たせることによって得られる一番の利点である。
+
+   The remainder of this section provides the rationale for allocating a
+   separate IP protocol identifier for UDP-Lite, rather than sharing the
+   IP protocol identifier with UDP.
+
+本節の残りは、UDPとIPプロトコル識別子を共有するのではなく、UDP-Liteに別のIPプロトコル識別子を割り当てることについての論理的根拠を与える。
+
+   There are no known interoperability problems between UDP and UDP-Lite
+   if they were to share the protocol identifier with UDP.
+   Specifically, there is no case where a potentially problematic packet
+   is delivered to an unsuspecting application; a UDP-Lite payload with
+   partial checksum coverage cannot be delivered to UDP applications,
+   and UDP packets that only partially fill the IP payload cannot be
+   delivered to applications using UDP-Lite.
+
+UDPのプロトコル識別子をUDPとUDP-Liteで共有する場合、UDPとUDP-Liteの間に相互運用の問題は知られていない。特に、潜在的に問題のあるパケットが信用している(他のプロトコルのデータが混じる可能性を知らない)アプリケーションに渡されるケースはない。すなわち部分的なチェックサムカバー範囲を持ったUDP-LiteのペイロードはUDPアプリケーションには渡されないし、IPペイロードを部分的にしか占めないUDPパケットはUDP-Liteを用いるアプリケーションには渡されない。
+
+   However, if the protocol identifier were to have been shared between
+   UDP and UDP-Lite, and a UDP-Lite implementation was to send a UDP-
+   Lite packet using a partial checksum to a UDP implementation, the UDP
+   implementation would silently discard the packet, because a
+   mismatching pseudo header would cause the UDP checksum to fail.
+   Neither the sending nor the receiving application would be notified.
+   Potential solutions to this could have been:
+
+しかしながら、プロトコル識別子をUDPとUDP-Liteで共有してしまい、UDP-Liteの実装がUDP実装に対して部分的チェックサムを用いたUDP-Liteパケットを送出する場合、UDP実装はこのパケットを静かに破棄する。なぜなら一致しない擬似ヘッダのためにUDPチェックサムが失敗するからである。送信と受信のどちらのアプリケーションもこれを知らされない。これについての潜在的な解決法は:
+
+   1) explicit application in-band signaling (while not using the
+      partial checksum coverage option) to enable the sender to learn
+      whether the receiver is UDP-Lite enabled or not, or
+
+1) 送信者に受信者がUDP-Lite利用可能かどうかを知らせることを可能とする明示的なアプリケーション帯域内信号(部分的チェックサムカバー範囲オプションを使わずに)、または
+
+   2) use of out-of-band signaling such as H.323, SIP, or RTCP to convey
+      whether the receiver is UDP-Lite enabled.
+
+2) 受信者がUDPを利用可能かどうかという情報を運ぶH.323、SIP、またはRTCPのような帯域外信号の使用、がある。
+
+   Since UDP-Lite has been assigned its own IP protocol identifier,
+   there is no need to consider this possibility of delivery of a UDP-
+   Lite packet to an unsuspecting UDP port.
+
+UDP-Liteにはすでに固有のIPプロトコル識別子が与えられたので、UDP-Liteパケットが信用しているUDPポートに渡されるこの可能性を考える必要性はなくなった。
+
+
+
+
+
+Larzon, et al.              Standards Track                     [Page 7]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+6.  Security Considerations
+6. セキュリティについての考察
+
+   The security impact of UDP-Lite is related to its interaction with
+   authentication and encryption mechanisms.  When the partial checksum
+   option of UDP-Lite is enabled, the insensitive portion of a packet
+   may change in transit.  This is contrary to the idea behind most
+   authentication mechanisms: authentication succeeds if the packet has
+   not changed in transit.  Unless authentication mechanisms that
+   operate only on the sensitive part of packets are developed and used,
+   authentication will always fail for UDP-Lite packets where the
+   insensitive part has been damaged.
+
+UDP-Liteのセキュリティへの影響は、認証や暗号化メカニズムとの相互作用と関連する。UDP-Liteの部分的チェックサムオプションが有効であるとき、パケットの敏感でない部分は通信中に変化するかもしれない。これは多くの認証メカニズムの考えかたに反する。すなわち認証はパケットが通信中に変更されなかった場合に成功する。パケットの敏感な部分にのみ作用する認証メカニズムを開発し使用しない限り、敏感でない部分が損傷したUDP-Liteパケットについて認証は常に失敗するだろう。
+
+   The IPsec integrity check (Encapsulation Security Protocol, ESP
+   [RFC-2406], or Authentication Header, AH [RFC-2402]) is applied (at
+   least) to the entire IP packet payload. Corruption of any bit within
+   the protected area will then result in the IP receiver discarding the
+   UDP-Lite packet.
+
+IPsec完全性確認(カプセル化セキュリティプロトコル(Encapsulation Security Protocol, ESP) [RFC-2406]または認証ヘッダ(Authentication Header, AH [RFC-2402]))は(少なくとも)IPパケットペイロード全体に適用される。そのため保護された範囲にあるいかなるビットの損傷も、IP受信者にUDP-Liteパケットを破棄させる結果となるだろう。
+
+   When IPsec is used with ESP payload encryption, a link can not
+   determine the specific transport protocol of a packet being forwarded
+   by inspecting the IP packet payload.  In this case, the link MUST
+   provide a standard integrity check covering the entire IP packet and
+   payload.  UDP-Lite provides no benefit in this case.
+
+IPsecがESPペイロード暗号化とともに用いられるとき、リンクは転送されるパケットのトランスポートプロトコルをIPパケットペイロードを検査することにより特定することはできない。この場合、リンクはIPパケットとペイロード全体をカバーする標準の完全性確認を提供しなければならない(MUST)。
+
+   Encryption (e.g., at the transport or application levels) may be
+   used.  If a few bits of an encrypted packet are damaged, the
+   decryption transform will typically spread errors so that the packet
+   becomes too damaged to be of use.  Many encryption transforms today
+   exhibit this behavior.  There exist encryption transforms, and stream
+   ciphers, which do not cause error propagation.  Note that omitting an
+   integrity check can, under certain circumstances, compromise
+   confidentiality [Bellovin98].  Proper use of stream ciphers poses its
+   own challenges [BB01].  In particular, an attacker can cause
+   predictable changes to the ultimate plaintext, even without being
+   able to decrypt the ciphertext.
+
+暗号(例えばトランスポートやアプリケーションレベルにおいて)も用いられるかもしれない。暗号化されたパケットのごく少ないビットが損傷した場合、復号作業は典型的にエラーを分散させ、その結果パケットは損傷を受けすぎて利用できなくなる。多くの今日の暗号化作業がこのふるまいをみせる。エラーの伝播を起こさない暗号化作業およびストリーム暗号が存在する。完全性を省略すると、ある状況下では秘密性を損うことに注意[Bellovin98]。ストリーム暗号の正しい使用はそれ自体挑戦となる[BB01]。特に、攻撃者は暗号文を復号することができなくとも、最終的な平文に予測できる変更を生じさせることができる。
+
+7.  IANA Considerations
+7. IANAに関する考察
+
+   A new IP protocol number, 136 has been assigned for UDP-Lite.  The
+   name associated with this protocol number is "UDPLite".  This ensures
+   compatibility across a wide range of platforms, since on some
+   platforms the "-" character may not form part of a protocol entity
+   name.
+
+新しいIPプロトコル番号136がUDP-Liteに割り当てられた。このプロトコル番号に関連づけられる名前は「UDPLite」である。これは広い範囲のプラットホームを通して互換性を保証する。なぜならいくつかのプラットホームにおいてはキャラクタ"-"をプロトコルエンティティの名前の一部として認めないかもしれないからである。
+
+
+
+
+
+
+Larzon, et al.              Standards Track                     [Page 8]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+8.  References
+8. 参考文献
+
+8.1.  Normative References
+8.1. 標準を規定する文献
+
+   [RFC-768]    Postel, J., "User Datagram Protocol", STD 6, RFC 768,
+                August 1980.
+
+   [RFC-791]    Postel, J., "Internet Protocol", STD 5, RFC 791,
+                September 1981.
+
+   [RFC-793]    Postel, J., "Transmission Control Protocol", STD 7, RFC
+                793, September 1981.
+
+   [RFC-1071]   Braden, R., Borman, D. and C. Partridge, "Computing the
+                Internet Checksum", RFC 1071, September 1988.
+
+   [RFC-2119]   Bradner, S., "Key words for use in RFCs to Indicate
+                Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC-2460]   Deering, S. and R. Hinden, "Internet Protocol, Version 6
+                (IPv6) Specification", RFC 2460, December 1998.
+
+8.2.  Informative References
+8.2. 情報提供の文献
+
+   [Bellovin98] Bellovin, S.M., "Cryptography and the Internet", in
+                Proceedings of CRYPTO '98, August 1988.
+
+   [BB01]       Bellovin, S. and M. Blaze, "Cryptographic Modes of
+                Operation for the Internet", Second NIST Workshop on
+                Modes of Operation, August 2001.
+
+   [3GPP]       "Technical Specification Group Services and System
+                Aspects; Quality of Service (QoS) concept and
+                architecture", TS 23.107 V5.9.0, Technical Specification
+                3rd  Generation Partnership Project, June 2003.
+
+   [H.264]      Hannuksela, M.M., Stockhammer, T., Westerlund, M. and D.
+                Singer, "RTP payload Format for H.264 Video", Internet
+                Draft, Work in Progress, March 2003.
+
+   [ILBRC]      S.V. Andersen, et. al., "Internet Low Bit Rate Codec",
+                Work in Progress, March 2003.
+
+   [ISO-14496]  ISO/IEC International Standard 1446 (MPEG-4),
+                "Information Technology Coding of Audio-Visual Objects",
+                January 2000.
+
+
+
+
+
+Larzon, et al.              Standards Track                     [Page 9]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+   [ITU-H.263]  "Video Coding for Low Bit Rate Communication," ITU-T
+                Recommendation H.263, January 1998.
+
+   [ITU-H.264]  "Draft ITU-T Recommendation and Final Draft
+                International Standard of Joint Video Specification",
+                ITU-T Recommendation H.264, May 2003.
+
+   [RFC-3819]   Karn, Ed., P., Bormann, C., Fairhurst, G., Grossman, D.,
+                Ludwig, R., Mahdavi, J., Montenegro, G., Touch, J. and
+                L. Wood, "Advice for Internet Subnetwork Designers", BCP
+                89, RFC 3819, July 2004.
+
+   [RFC-3550]   Schulzrinne, H., Casner, S., Frederick, R. and V.
+                Jacobson, "RTP: A Transport Protocol for Real-Time
+                Applications", RFC 3550, July 2003.
+
+   [RFC-2402]   Kent, S. and R. Atkinson, "IP Authentication Header",
+                RFC 2402, November 1998.
+
+   [RFC-2406]   Kent, S. and R. Atkinson, "IP Encapsulating Security
+                Payload (ESP)", RFC 2406, November 1998.
+
+   [RFC-3267]   Sjoberg, J., Westerlund, M., Lakeaniemi, A. and Q. Xie,
+                "Real-Time Transport Protocol (RTP) Payload Format and
+                File Storage Format for the Adaptive Multi-Rate (AMR)
+                and Adaptive Multi-Rate Wideband (AMR-WB) Audio Codecs",
+                RFC 3267, June 2002.
+
+   [LDP99]      Larzon, L-A., Degermark, M. and S. Pink, "UDP Lite for
+                Real-Time Multimedia Applications", Proceedings of the
+                IEEE International Conference of Communications (ICC),
+                1999.
+
+9.  Acknowledgements
+9. 謝辞
+
+   Thanks to Ghyslain Pelletier for significant technical and editorial
+   comments.  Thanks also to Steven Bellovin, Elisabetta Carrara, and
+   Mats Naslund for reviewing the security considerations chapter, and
+   to Peter Eriksson for a language review, thereby improving the
+   clarity of this document.
+
+Ghyslain Pelletierの重要な技術的および編集上のコメントに感謝する。Steven Bellovin, Elisabetta Carrara, およびMats Naslundにはセキュリティについての考察の章の査読、およびPeter Erikssonには言語的な査読をしていただき、これらによりこの文書の明確性が改善したことに感謝する。
+
+
+
+
+
+
+
+
+
+
+Larzon, et al.              Standards Track                    [Page 10]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+10.  Authors' Addresses
+10. 著者の連絡先
+
+   Lars-Ake Larzon
+   Department of CS & EE
+   Lulea University of Technology
+   S-971 87 Lulea, Sweden
+
+   EMail: lln@csee.ltu.se
+
+
+   Mikael Degermark
+   Department of Computer Science
+   The University of Arizona
+   P.O. Box 210077
+   Tucson, AZ 85721-0077, USA
+
+   EMail: micke@cs.arizona.edu
+
+
+   Stephen Pink
+   The University of Arizona
+   P.O. Box 210077
+   Tucson, AZ 85721-0077, USA
+
+   EMail: steve@cs.arizona.edu
+
+
+   Lars-Erik Jonsson
+   Ericsson AB
+   Box 920
+   S-971 28 Lulea, Sweden
+
+   EMail: lars-erik.jonsson@ericsson.com
+
+
+   Godred Fairhurst
+   Department of Engineering
+   University of Aberdeen
+   Aberdeen, AB24 3UE, UK
+
+   EMail: gorry@erg.abdn.ac.uk
+
+
+日本語訳
+
+  舟阪淳一
+  広島市立大学情報科学研究科
+  メール送信フォーム: http://mary.net.info.hiroshima-cu.ac.jp/cgi-bin/mailaccept.pl
+
+
+
+
+
+
+
+Larzon, et al.              Standards Track                    [Page 11]
+
+RFC 3828                   UDP-Lite Protocol                   July 2004
+
+
+11.  Full Copyright Statement
+11. 著作権の完全な記述
+(訳注: 原文のみが有効ですので注意してください。)
+
+   Copyright (C) The Internet Society (2004).  This document is subject
+   to the rights, licenses and restrictions contained in BCP 78, and
+   except as set forth therein, the authors retain all their rights.
+
+Copyright (C) The Internet Society (2004).
+本文書はBCP 78に含まれる権利、ライセンス、および制限の対象で
+あり、特記されたもの以外は著者らが全ての権利を保持する。
+
+   This document and the information contained herein are provided on an
+   "AS IS" basis and THE CONTRIBUTOR, THE ORGANIZATION HE/SHE REPRESENTS
+   OR IS SPONSORED BY (IF ANY), THE INTERNET SOCIETY AND THE INTERNET
+   ENGINEERING TASK FORCE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE
+   INFORMATION HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED
+   WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+この文書およびここに含まれる情報は基本的にそのままの("AS
+IS")状態で提供され、「貢献者、彼または彼女が代表する組織ある
+いは彼または彼女に資金を援助する組織(もしあれば)、The
+Internet Society、The IETF Trust、およびInternet Engineering
+Task Forceは、明示しているか暗示しているかに関わらず一切の保
+証を放棄する。この保証にはここにある情報を用いることで特定の
+目的のために商品性や適応性に関するどんな権利もどんな暗示的な
+保証も侵害しないというような保証を含むがそれに限らない。」
+
+Intellectual Property
+知的財産
+
+   The IETF takes no position regarding the validity or scope of any
+   Intellectual Property Rights or other rights that might be claimed to
+   pertain to the implementation or use of the technology described in
+   this document or the extent to which any license under such rights
+   might or might not be available; nor does it represent that it has
+   made any independent effort to identify any such rights.  Information
+   on the procedures with respect to rights in RFC documents can be
+   found in BCP 78 and BCP 79.
+
+この文書で記述された技術の実装や使用、またはライセンスが利用
+可能あるいは不可能となる拡張に付随すると主張するかもしれない
+知的財産権またはその他の権利の正当性や範囲に関してはいかなる
+立場もとらない。またこのような権利を識別するためにそれぞれ独
+立した努力を払うということを示すわけでもない。RFC文書におけ
+る権利に関する手続きの情報はBCP 78およびBCP 79にある。
+
+   Copies of IPR disclosures made to the IETF Secretariat and any
+   assurances of licenses to be made available, or the result of an
+   attempt made to obtain a general license or permission for the use of
+   such proprietary rights by implementers or users of this
+   specification can be obtained from the IETF on-line IPR repository at
+   http://www.ietf.org/ipr.
+
+IETF事務局によってなされたIPR(知的財産権)開示の控えおよび利
+用可能なライセンスについての保証、あるいは実装者やユーザがこ
+の仕様の利用のための一般的なライセンスまたは許可を得るための
+試みの結果は http://www.ietf.org/ipr にあるIETFオンラインIPR
+リボジトリから取得できる。
+
+   The IETF invites any interested party to bring to its attention any
+   copyrights, patents or patent applications, or other proprietary
+   rights that may cover technology that may be required to implement
+   this standard.  Please address the information to the IETF at ietf-
+   ipr@ietf.org.
+
+IETFはこの標準を実装するために必要となるかもしれない技術をカ
+バーするような著作権、特許または特許応用、あるいは他の財産権
+に注意を払ってくれる興味をもった団体を招いている。
+ietr-ipr@ietr.orgのアドレスにIETFへのそのような情報を提供し
+ていただきたい。
+
+Acknowledgement
+謝辞
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC編集者職務への資金提供は現在、Internet Societyによる。
+
+
+
+
+
+
+
+
+Larzon, et al.              Standards Track                    [Page 12]
+

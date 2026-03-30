@@ -1,0 +1,1085 @@
+
+
+
+
+
+
+Network Working Group                                           L. Coene
+Request for Comments: 3257                                       Siemens
+Category: Informational                                       April 2002
+
+
+      Stream Control Transmission Protocol Applicability Statement
+ストリーム制御伝送プロトコルの応用可能性についての文書
+
+Status of this Memo
+このメモのステータス
+
+   This memo provides information for the Internet community.  It does
+   not specify an Internet standard of any kind.  Distribution of this
+   memo is unlimited.
+
+このメモはインターネットコミュニティに情報を提供する。いかな
+る種類のインターネット標準を記述するものではない。このメモの
+配布に制限はない。
+
+Copyright Notice
+著作権表示
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+(日本語訳について)-----------------------------------------------------
+この日本語訳は舟阪淳一が個人的に訳したものです。誤訳も含まれていると
+思いますので、ご利用の際は注意してください。また不備をみつけられましたら
+ご連絡ください。この注意書きを残していれば、自由に改変、再配布できる
+ものとします。
+連絡先 http://mary.net.info.hiroshima-cu.ac.jp/cgi-bin/mailaccept.pl
+-----------------------------------------------------------------------
+
+Abstract
+概要
+
+   This document describes the applicability of the Stream Control
+   Transmission Protocol (SCTP).  It also contrasts SCTP with the two
+   dominant transport protocols, User Datagram Protocol (UDP) &
+   Transmission Control Protocol (TCP), and gives some guidelines for
+   when best to use SCTP and when not best to use SCTP.
+
+本文書はストリーム制御伝送プロトコル(SCTP)の応用可能性を記述
+する。またSCTPを二つの支配的なトランスポートプロトコルである
+ユーザデータグラムプロトコル(UDP)および伝送制御プロトコル
+(TCP)と対照させ、いつSCTPを用いるのが最良で、いつそうでない
+のか、についてのガイドラインを与える。
+
+Table of contents
+目次
+
+   1. Introduction ..................................................  2
+   1.1 Terminology ..................................................  2
+   2 Transport protocols ............................................  2
+   2.1 TCP service model ............................................  2
+   2.2 SCTP service model ...........................................  3
+   2.3 UDP service model ............................................  4
+   3 SCTP Multihoming issues ........................................  4
+   4 SCTP Network Address Translators (NAT) issues [RFC2663] ........  5
+   5 Security Considerations ........................................  6
+   5.1 Security issues with TCP .....................................  6
+   5.2 Security issues with SCTP ....................................  7
+   5.3 Security issues with both TCP and SCTP .......................  8
+   6 References and related work ....................................  9
+   7 Acknowledgments ................................................ 10
+   Appendix A: Major functions provided by SCTP ..................... 11
+   Editor's Address ................................................. 12
+   Full Copyright Statement ......................................... 13
+
+
+
+
+
+
+
+Coene                        Informational                      [Page 1]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+1 Introduction
+はじめに
+
+   SCTP is a reliable transport protocol [RFC2960], which along with TCP
+   [RFC793], RTP [RFC1889], and UDP [RFC768], provides transport-layer
+   services for upper layer protocols and services.  UDP, RTP, TCP, and
+   SCTP are currently the IETF standards-track transport-layer
+   protocols.  Each protocol has a domain of applicability and services
+   it provides, albeit with some overlaps.
+
+SCTPは信頼性をもつトランスポートプロトコルのひとつであり
+[RFC2960]、TCP [RFC793]、RTP [RFC1889]、およびUDP [RFC768]と
+ともに上位層のプロトコルやサービスのためにトランスポート層サー
+ビスを提供するものである。UDP、RTP、TCP、およびSCTPは現在、
+IETFの標準トラックのトランスポート層プロトコルである。いささ
+か重なるところはあるが、それぞれのプロトコルには適用可能な範
+囲と提供できるサービスの範囲がある。
+
+   By clarifying the situations where the functionality of these
+   protocols are applicable, this document can guide implementers and
+   protocol designers in selecting which protocol to use.
+
+これらのプロトコルの機能が適用可能な状況を明らかにすることで、
+本文書はどのプロトコルを用いるか選択するという点において実装
+者やプロトコル設計者を導くことができる。
+
+   Special attention is given to services SCTP provides which would make
+   a decision to use SCTP the right one.
+
+SCTPを使用するという判断が正解となるようなSCTPが提供するサー
+ビスについては特別な注意を払う。
+
+   Major functions provided by SCTP can be found in Appendix A.
+
+SCTPが提供する主な機能は付録Aにある。
+
+1.1 Terminology
+用語
+
+   The following terms are commonly identified in this work:
+
+本文書では以下の用語を共通して用いる:
+
+   Association: SCTP connection between two endpoints.
+
+アソシエーション: 二つの端末間のSCTPコネクション。
+
+   Transport address: A combination of IP address and SCTP port number.
+
+トランスポートアドレス: IPアドレスとSCTPポート番号の組。
+
+   Upper layer: The user of the SCTP protocol, which may be an
+   adaptation layer, a session layer protocol, or the user application
+   directly.
+
+上位層: SCTPプロトコルのユーザ。適応層、セッション層プロトコ
+ル、あるいは直接ユーザアプリケーションかもしれない。
+
+   Multihoming: Assigning more than one IP network interface to a single
+   endpoint.
+
+マルチホーミング: ひとつの端末に2つ以上のIPネットワークイン
+ターフェースを割り当てること。
+
+2 Transport protocols
+トランスポートプロトコル
+
+2.1 TCP service model
+TCPのサービスモデル
+
+   TCP is a connection-oriented (a.k.a., session-oriented) transport
+   protocol.  This means that it requires both the establishment of a
+   connection prior to the exchange of application data and a connection
+   tear-down to release system resources after the completion of data
+   transfer.
+
+TCPはコネクション指向(すなわち、セッション指向)のトランスポー
+トプロトコルのひとつである。これはアプリケーションデータの交
+換に先がけてのコネクションの確立、およびデータ転送完了後のシ
+ステムリソースの解放のためのコネクションの終了、の両方を必要
+とする。
+
+   TCP is currently the most widely used connection-oriented transport
+   protocol for the Internet.
+
+TCPは現在インターネット向けで最も広く用いられているコネクショ
+ン指向のトランスポートプロトコルである。
+
+
+
+
+Coene                        Informational                      [Page 2]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   TCP provides the upper layer with the following transport services:
+
+TCPは上位層に以下のトランスポートサービスを提供する:
+
+   - data reliability;
+- データの信頼性;
+
+   - data sequence preservation; and
+- データの順序保存; および
+
+   - flow and congestion control.
+
+- フロー制御および輻輳制御。
+
+2.2 SCTP service model
+SCTPのサービスモデル
+
+   SCTP is also connection-oriented and provides all the transport
+   services that TCP provides.  Many Internet applications therefore
+   should find that either TCP or SCTP will meet their transport
+   requirements.  Note, for applications conscious about processing
+   cost, there might be a difference in processing cost associated with
+   running SCTP with only a single ordered stream and one address pair
+   in comparison to running TCP.
+
+SCTPもまたコネクション指向であり、TCPの提供する全てのトラン
+スポートサービスを提供する。それゆえ多くのインターネットアプ
+リケーションはTCPかSCTPのいずれかが自身のトランスポートに対
+する要求をみたすことがわかるはずである。処理コストに敏感なア
+プリケーションは、SCTPを用いて単一の順序通りのストリームを一
+組のアドレスペアについて動作させる場合とTCPを動作させる場合
+の処理コストに違いがあるかもしれないことに注意すること。
+
+   However, SCTP has some additional capabilities that TCP lacks and
+   This can make SCTP a better choice for some applications and
+   environments:
+
+しかしながら、SCTPはいくつかのTCPには欠けている付加的な機能
+をもっており、このことによりいくつかのアプリケーションや環境
+にとってはSCTPがよりよい選択となり得る。
+
+   - multi-streams support:
+- マルチストリームのサポート:
+
+   SCTP supports the delivery of multiple independent user message
+   streams within a single SCTP association.  This capability, when
+   properly used, can alleviate the so-called head-of-line-blocking
+   problem caused by the strict sequence delivery constraint imposed to
+   the user data by TCP.
+
+SCTPは単一のSCTPアソシエーションの中で複数の独立なユーザメッ
+セージのストリームの転送をサポートする。この機能をうまく使う
+と、TCPによりユーザデータに課せられた厳格な順序通りの転送と
+いう制約によって起こるいわゆるhead-of-line-blocking問題を緩
+和することが可能になる。
+
+   This can be particularly useful for applications that need to
+   exchange multiple, logically separate message streams between two
+   endpoints.
+
+これは二つの端末の間で複数の論理的に分かれたメッセージのスト
+リームを交換する必要のあるアプリケーションにとっては特に有用
+となり得る。
+
+   - multi-homing support:
+マルチホームのサポート:
+
+   SCTP provides transparent support for communications between two
+   endpoints of which one or both is multi-homed.
+
+一つあるいは両方がマルチホームとなっている二つの端末の間の通
+信に透過的なサポートを提供する。
+
+   SCTP provides monitoring of the reachability of the addresses on the
+   remote endpoint and in the case of failure can transparently failover
+   from the primary address to an alternate address, without upper layer
+   intervention.
+
+SCTPは相手端末のアドレスについて到達性のモニタリングを提供し、
+障害の場合には上位層の介入なしに主アドレスから代替アドレスに
+透過的にフェイルオーバが可能である。
+
+
+
+
+
+
+Coene                        Informational                      [Page 3]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   This capability can be used to build redundant paths between two SCTP
+   endpoints and can be particularly useful for applications that seek
+   transport-level fault tolerance.
+
+この機能は二つのSCTP端末の間に冗長パスを構築するのに使うこと
+ができ、トランスポートレベルでのフォールトトレランスを求める
+アプリケーションには特に有用であり得る。
+
+   Achieving path redundancy between two SCTP endpoints normally
+   requires that the two endpoints being equipped with multiple
+   interfaces assigned with multiple addresses and that routing is
+   configured appropriately (see Section 3).
+
+二つのSCTP端末の間で経路冗長性を達成するにはふつう、二つの端
+末が複数のアドレスをわりあてられた複数のインタフェースを備え
+ており、ルーティングが適切に設定されている必要がある。
+
+   - preservation of message boundaries:
+- メッセージ境界の保持:
+
+   SCTP preserves application messages boundaries.  This is useful when
+   the application data is not a continuous byte stream but comes in
+   logical chunks that the receiver handles separately.
+
+SCTPはアプリケーションのメッセージ境界を保持する。この機能は
+アプリケーションデータが連続的なバイトストリームではなく受信
+者が別々に扱えるような論理的なチャンクの形でやって来るときに
+有用である。
+
+   In contrast, TCP offers a reliable data stream that has no indication
+   of what an application may consider logical chunks of the data.
+
+対照的にTCPはアプリケーションがデータの論理的なチャンクをど
+う考えているかを示すものがないような信頼性のあるデータストリー
+ムを提供する。
+
+   - unordered reliable message delivery:
+- 順序通りでないが信頼性のあるメッセージ転送:
+
+   SCTP supports the transportation of user messages that have no
+   application-specified order, yet need guaranteed reliable delivery.
+
+SCTPはアプリケーションが順序を指定していないが信頼性のある転
+送を保証する必要のあるユーザメッセージの配送をサポートする。
+
+   Applications that need to send un-ordered reliable messages or prefer
+   using their own message sequencing and ordering mechanisms may find
+   this SCTP capability useful.
+
+順序通りではないが信頼性のあるメッセージを送る必要があったり、
+あるいは独自のメッセージ番号づけや順序づけのメカニズムを使い
+たいアプリケーションはこのSCTPの機能が有用であるとわかるかも
+しれない。
+
+2.3 UDP Service model
+UDPのサービスモデル
+
+   UDP is connectionless.  This means that applications that use UDP do
+   not need to perform connection establishment or tear-down.
+
+UDPはコネクションレスである。これはUDPを用いるアプリケーショ
+ンがコネクションの確立や終了を行う必要がないことを意味する。
+
+   As transport services to its upper layer, UDP provides only:
+
+上位層へのトランスポートサービスとして、UDPは以下のみを提供する。
+
+   - best-effort data delivery, and
+- ベストエフォートのデータ配送、および
+
+   - preservation of message boundaries.
+- メッセージ境界の保存。
+
+   Applications that do not require a reliable transfer of more than a
+   packet's worth of data will find UDP adequate.  Some transaction-
+   based applications fall into this category.
+
+パケット2つ以上分のデータについて信頼性のある転送を必要とし
+ないアプリケーションは、UDPがふさわしいと分かるだろう。トラ
+ンザクションベースのアプリケーションのいくつかはこのカテゴリ
+に入る。
+
+3 SCTP Multihoming Issues
+SCTPマルチホームの課題
+
+   SCTP provides transport-layer support for multihoming.  Multihoming
+   has the potential of providing additional robustness against network
+   failures.  In some applications, this may be extremely important, for
+   example, in signaling transport of PSTN signaling messages [RFC2719].
+
+SCTPはマルチホーム環境にトランスポート層におけるサポートを提
+供する。マルチホームはネットワーク障害に対する付加的な頑強性
+を与える可能性がある。これはいくつかのアプリケーションにおい
+て、例えばPSTN信号メッセージの信号転送[RFC2719]において、非
+常に重要だろう。
+
+
+
+Coene                        Informational                      [Page 4]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   It should be noted that SCTP multihoming support only deals with
+   communication between two endpoints of which one or both is assigned
+   with multiple IP addresses on possibly multiple network interfaces.
+   It does NOT deal with communication ends that contain multiple
+   endpoints (i.e., clustered endpoints) that can switch over to an
+   alternate endpoint in case of failure of the original endpoint.
+
+SCTPのマルチホームのサポートは、片方または両方がおそらくは複
+数のネットワークインタフェースにおいて複数のIPアドレスが割り
+当てられている2つの端末間の通信のみを扱うことに注意を払うべ
+きである。これは元々の端末が障害の場合に代替の端末に切替えら
+れるような複数の端末を含む通信端末(すなわちクラスタ端末)は扱
+わない(NOT)。
+
+   Generally, for truly fault resilient communication between two end-
+   points, the multihoming feature needs more than one IP network
+   interface for each endpoint.  The number of paths used is the minimum
+   of network interfaces used by any of the endpoints.  When an endpoint
+   selects its source address, careful consideration must be taken.  If
+   the same source address is always used, then it is possible that the
+   endpoint will be subject to the same single point of failure.  When
+   the endpoint chooses a source address, it should always select the
+   source address of the packet to correspond to the IP address of the
+   Network interface where the packet will be emitted subject to the
+   binding address constraint.  The binding address constraint is, put
+   simply, that the endpoint must never choose a source address that is
+   not part of the association i.e., the peer endpoint must recognize
+   any source address used as being part of the association.
+
+一般的に2つの端末間における真に障害のない通信のためには、マ
+ルチホーム状態はそれぞれの端末で2つ以上のIPネットワークイン
+タフェースを必要とする。使われる経路の数はそれぞれの端末で使
+われるネットワークインタフェースの数の小さい方である。端末が
+その送信元アドレスを選ぶとき、慎重に考えるべきである。同じ送
+信元アドレスを常に使う場合、端末は同じ単一の障害発生場所の影
+響を受ける。端末が送信元アドレスを選ぶときは、アドレスを結び
+つける制約のもとにパケットが送出されるネットワークインタフェー
+スのIPアドレスに対応したパケット送信元アドレスを常に選ぶべき
+である。アドレスを結びつける制約とは簡単に言うと、端末はアソ
+シエーションの一部を構成していない送信元アドレスは決して選ん
+ではならない、すなわち、使われているどの送信元アドレスも、相
+手端末がアソシエーションの一部を構成するものとして認識しなけ
+ればならないということである。
+
+   The availability of the association will benefit greatly from having
+   multiple addresses bound to the association endpoint when the
+   endpoint is on a multi-homed host.
+
+アソシエーションの可用性は、端末がマルチホームホスト上にある
+ときにアソシエーション端末が複数のアドレスに結びつけられてい
+ることによって、大きく向上するだろう。
+
+4 SCTP Network Address Translators (NAT) issues [RFC2663]
+SCTPのネットワークアドレス変換器(NAT)に関する課題 [RFC2663]
+
+   When two endpoints are to setup an SCTP association and one (or both)
+   of them is behind a NAT (i.e., it does not have any publicly
+   available network addresses), the endpoint(s) behind the NAT should
+   consider one of the following options:
+
+2つの端末がSCTPアソシエーションを確立しようとしておりそのう
+ち一方(あるいは両方)がNATの向こう側にある(すなわち、外に公開
+されて利用可能なネットワークアドレスをもたない)とき、NATの向
+こう側の端末は以下の選択肢の一つを考えるべきである。
+
+   (1) When single homed sessions are to be used, no transport addresses
+   should be sent in the INIT or INIT ACK chunk(Refer to section 3.3 of
+   RFC2960 for chunk definitions).  This will force the endpoint that
+   receives this initiation message to use the source address in the IP
+   header as the only destination address for this association.  This
+   method can be used for a NAT, but any multi-homing configuration at
+   the endpoint that is behind the NAT will not be visible to its peer,
+   and thus not be taken advantage of.  See figure 1.
+
+(1) シングルホームのセッションを用いるとき、INITやINIT ACKチャ
+ンク(チャンクの定義についてはRFC2960の3.3節参照)の中にトラン
+スポートアドレスを入れて送るべきではない。これによりこの初期
+化メッセージを受信した端末に、IPヘッダの中の送信元アドレスを
+このアソシエーションの唯一の宛先アドレスとして使わせることに
+なる。この方法はNATに使用可能だが、NATの向こう側にある端末の
+マルチホーム設定が相手にみえないので、その利点を生かすことに
+ならない。
+
+
+
+
+
+
+
+
+Coene                        Informational                      [Page 5]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+      +-------+  +---------+      *~~~~~~~~~~*           +------+
+      |Host A |  |   NAT   |     *   Cloud    *          |Host B|
+      | 10.2  +--|10.1|2.1 |----|--------------|---------+ 1.2  |
+      |       |  |    |    |     *            *          |      |
+      +-------+  +---------+      *~~~~~~~~~~*           +------+
+
+               Fig 1: SCTP through NAT without multihoming
+マルチホームなしでNAT経由のSCTP
+
+   For multihoming the NAT must have a public IP address for each
+   represented internal IP address.  The host can preconfigure an IP
+   address that the NAT can substitute, or, the NAT can have internal
+   Application Layer Gateway (ALG) which will intelligently translate
+   the IP addresses in the INIT and INIT ACK chunks.  See Figure 2.
+
+マルチホームのためにはNATは内部のIPアドレスそれぞれに対応す
+る外部への公開IPアドレスを持たなければならない。ホストはNAT
+が置換できるIPアドレスを事前に設定しておくことができるし、あ
+るいは、NATがINITおよびINIT ACKチャンクにあるIPアドレスをイ
+ンテリジェントに置換するような内部のアプリケーション層ゲート
+ウェイ(ALG)を持つこともできる。図2を参照のこと。
+
+   If Network Address Port Translation is used with a multihomed SCTP
+   endpoint, then any port translation must be applied on a per-
+   association basis such that an SCTP endpoint continues to receive the
+   same port number for all messages within a given association.
+
+ネットワークアドレスおよびポートの変換(NAPT)をマルチホーム化
+されたSCTP端末と合わせて利用する場合、SCTP端末が与えられたア
+ソシエーションの中の全てのメッセージを同じポート番号で受け続
+けられるよう、ポート変換をアソシエーションごとに適用しなけれ
+ばならない。
+
+      +-------+   +----------+      *~~~~~~~~~~*           +------+
+      |Host A |   |    NAT   |     *   Cloud    *          |Host B|
+      | 10.2  +---+ 10.1|5.2 +-----+ 1.1<+->3.1--+---------+ 1.2  |
+      | 11.2  +---+ 11.1|6.2 |     |     +->4.2--+---------+ 2.2  |
+      |       |   |          |      *           *          |      |
+      +-------+   +----------+       *~~~~~~~~~*           +------+
+
+                Fig 2: SCTP through NAT with multihoming
+マルチホームを用いNATを経由したSCTP
+
+   (2) Another alternative is to use the hostname feature and DNS to
+   resolve the addresses.  The hostname is included in the INIT of the
+   association or in the INIT ACK.  The hostname must be resolved by DNS
+   before the association is completely set up.  There are special
+   issues regarding NAT and DNS, refer to RFC2694 for details.
+
+(2) もう一つの方法はホスト名機能を用いDNSにアドレス解決させ
+ることである。ホスト名はアソシエーションのINITまたはINIT ACK
+に含まれる。ホスト名はアソシエーションが完全に確立される前に
+DNSによって解決されなければならない。NATとDNSに関しては特別
+な問題があるので、詳しくはRFC2694を参照のこと。
+
+5 Security Considerations
+セキュリティの考慮
+
+   In this section, some relevant security issues found in the
+   deployment of the connection-oriented transport protocols will be
+   discussed.
+
+本節ではコネクション指向のトランスポートプロトコルの導入にお
+いてみつかったいくつかの関連するセキュリティ課題を論じる。
+
+5.1 Security issues with TCP
+TCPについてのセキュリティ課題
+
+   Some TCP implementations have been known to be vulnerable to blind
+   denial of service attacks, i.e., attacks that had been executed by an
+   attacker that could not see most of the traffic to or from the target
+   host.
+
+いくつかのTCPの実装は、ブラインドサービス不能攻撃、すなわち
+ターゲットホストからの、またはターゲットホストへのほとんどの
+トラフィックをみることのできない攻撃者によって実行される攻撃、
+に対して脆弱であることが知られている。
+
+
+
+Coene                        Informational                      [Page 6]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   The attacker would send a large number of connection establishment
+   requests (TCP-SYN packets) to the attacked target, possibly from
+   faked IP source addresses.  The attacked host would reply by sending
+   SYN-ACK packets and entering SYN-received state, thereby allocating
+   space for a TCB.  At some point the SYN-queue would fill up, (i.e.,
+   the number of connections waiting to be established would rise to a
+   limit) and the host under attack would have to start turning down new
+   connection establishment requests.
+
+攻撃者はおそらくは偽造した送信元IPアドレスから、大量のコネク
+ション確立要求(TCP-SYNパケット)を攻撃対象に送るだろう。攻撃
+対象のホストはSYN-ACKパケットを送りSYN受信済(SYN-received)状
+態に遷移し、これによりTCBのスペースを確保して応答するだろう。
+ある点でSYN-queueは一杯になり(すなわち確立待ちのコネクション
+の数が限界に達し)、攻撃されているホストは新しいコネクション
+確立要求を拒否し始める必要があるだろう。
+
+   TCP implementations with SYN-cookies algorithm [SYN-COOK] reduce the
+   risk of such blind denial of service attacks.  TCP implementations
+   can switch to using this algorithm in times when their SYN-queues are
+   filled up while still fully conforming to the TCP specification
+   [RFC793].  However, use of options such as a window scale [RFC1323],
+   is not possible, then.  With the SYN-cookie mechanism, a TCB is only
+   created when the client sends back a valid ACK packet to the server,
+   and the 3-way handshake has thus been successfully completed.
+
+SYNクッキーアルゴリズムを用いたTCPの実装[SYNCOOK](訳注: 原文
+のハイフンは不要)はこのようなブラインドサービス不能攻撃のリ
+スクを軽減する。TCPの実装は依然として完全にTCPの仕様[RFC793]
+に沿ったままで、SYNキューが一杯になったときにこのアルゴリズ
+ムを使うようにスイッチすることができる。しかしながらその場合
+はウインドウスケール[RFC1323]のようなオプションの使用が不可
+能である。SYNクッキーメカニズムを用いることで、クライアント
+が正しいACKパケットをサーバに返し、3ウェイハンドシェイクが問
+題なく完了したときだけ、TCBが作成される。
+
+   Blind connection forgery is another potential threat to TCP.  By
+   guessing valid sequence numbers, an attacker would be able to forge a
+   connection.  However, with a secure hashsum algorithm, for some of
+   the current SYN-cookie implementations the likelihood of achieving
+   this attack is on the order of magnitude of 1 in 2^24, i.e., the
+   attacker would have to send 2^24 packets before obtaining one forged
+   connection when SYN-cookies are used.
+
+ブラインドコネクション偽造はTCPに対するもう一つの潜在的な脅
+威である。正しいシーケンス番号を推測することで、攻撃者はコネ
+クションを偽造することができるだろう。しかしながらセキュアな
+ハッシュサムアルゴリズムを用いれば、現在のSYNクッキーのいく
+つかの実装についてはこの攻撃の成功率は2^24に1のオーダーであ
+る。すなわちSYNクッキーが使われているとき、攻撃者は偽造コネ
+クションを得るまでに2^24個のパケットを送る必要があるだろう。
+
+5.2 Security issues with SCTP
+SCTPについてのセキュリティ課題
+
+   SCTP has been designed with the experiences made with TCP in mind.
+   To make it hard for blind attackers (i.e., attackers that are not
+   man-in-the-middle) to inject forged SCTP datagrams into existing
+   associations, each side of an SCTP association uses a 32 bit value
+   called "Verification Tag" to ensure that a datagram really belongs to
+   the existing association.  So in addition to a combination of source
+   and destination transport addresses that belong to an established
+   association, a valid SCTP datagram must also have the correct tag to
+   be accepted by the recipient.
+
+SCTPはTCPで得られた経験を念頭において設計されてきた。ブライ
+ンド攻撃者(すなわち中間者攻撃(man-in-the-middle)ではない)が
+偽造したSCTPデータグラムを既存のアソシエーションに注入するの
+を困難にするために、SCTPアソシエーションの各端末が、あるデー
+タグラムが確かに既存のアソシエーションに属することを確認する
+ために「認証タグ」と呼ばれる32ビットの値を用いる。従って確立
+済のアソシエーションに属する送信元および送信先トランスポート
+アドレスの組み合せに加えて、正規のSCTPデータグラムは相手に受
+け入れられる正しいタグも持たなければならない。
+
+   Unlike in TCP, usage of cookie in association establishment is made
+   mandatory in SCTP.  For the server, a new association is fully
+   established after three messages (containing INIT, INIT-ACK, COOKIE-
+   ECHO chunks) have been exchanged.  The cookie is a variable length
+   parameter that contains all relevant data to initialize the TCB on
+   the server side, plus a HMAC used to secure it.  This HMAC (MD5 as
+   per [RFC1321] or SHA-1 [SHA1]) is computed over the cookie and a
+   secret, server-owned key.
+
+TCPの場合と異なり、SCTPの場合はアソシエーション確立における
+クッキーの使用が必須とされた。サーバについては、3つのメッセー
+ジ(INIT、INIT-ACK、COOKIE-ECHOチャンクを含む)が交換されたあ
+とで新しいアソシエーションが完全に確立される。クッキーとは、
+サーバ側でTCBを初期化するのに必要なすべてのデータ、およびこ
+れを安全にするために使われるHMACを含む可変長パラメータである。
+このHMAC([RFC1321]に従うMD5またはSHA-1 [SHA1])はクッキー、お
+よびサーバが所有する秘密鍵に対して計算される。
+
+
+
+Coene                        Informational                      [Page 7]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   As specifically prescribed for SCTP implementations [RFC2960],
+   additional resources for new associations may only be reserved in
+   case a valid COOKIE-ECHO chunk is received by a client, and the
+   computed HMAC for this new cookie matches that contained in the
+   cookie.
+
+SCTPの実装のためにはっきりと規定されているように[RFC2960]、
+新しいアソシエーションのための追加資源は、正当なCOOKIE-ECHO
+をクライアントが受信しこの新しいクッキーについて計算したHMAC
+がクッキーに含まれるものと一致した場合にのみ確保される。
+
+   With SCTP the chances of an attacker being able to blindly forge a
+   connection are even lower than in the case of TCP using SYN-cookies,
+   since the attacker would have to guess a correct value for the HMAC
+   contained in the cookie, i.e., lower than 1 in 2^128 which for all
+   practical purposes is negligible.
+
+SCTPを用いることで、攻撃者がブラインドの状態でコネクションを
+偽造できる可能性はSYNクッキーを用いたTCPの場合よりもさらに低
+い。というのは攻撃者はクッキーに含まれるHMACの正しい値を推測
+しなければならないからである。すなわちその可能性はあらゆる実
+用的な目的では無視できるほど小さい値である2^128分の1より低い。
+
+   It should be noted that SCTP only tries to increase the availability
+   of a network.  SCTP does not contain any protocol mechanisms that are
+   directly related to user message authentication, integrity and
+   confidentiality functions.  For such features, it depends on the
+   IPsec protocols and architecture and/or on security features of the
+   application protocols.
+
+SCTPはネットワークの可用性を向上させようとするのみであること
+に注意すべきである。SCTPはユーザメッセージの認証、完全性確保、
+および機密性確保の機能に直接関連するプロトコルメカニズムは含
+まない。このような機能のためには、IPsecプロトコルやアーキテ
+クチャ、そして／あるいは、アプリケーションプロトコルのセキュ
+リティ機能に頼ることになる。
+
+   Transport Layer security(TLS)[RFC2246] using SCTP must always use
+   in-order streams.
+
+SCTPを用いたトランスポート層セキュリティ(TLS)[RFC2246]は常に
+順序通りのストリームを用いなければならない。
+
+   Currently the IPSEC working group is investigating the support of
+   multi-homing by IPSEC protocols.  At the present time to use IPSEC,
+   one must use 2 * N * M security associations if one endpoint uses N
+   addresses and the other M addresses.
+
+現在IPSECワーキンググループはIPSECプロトコルのマルチホームの
+サポートについて調査中である。現在のところIPSECを使うには、
+ある端末がN個のアドレスを用い、もう一方がM個のアドレスを用い
+る場合、2*N*Mのセキュリティアソシエーションを用いなければな
+らない。
+
+5.3 Security Issues with both TCP and SCTP
+TCPとSCTPの両方についてのセキュリティ課題
+
+   It is important to note that neither TCP nor SCTP protect itself from
+   man-in-the-middle attacks where an established session might be
+   hijacked (assuming the attacker can see the traffic from and inject
+   its own packets to either endpoints).
+
+TCPもSCTPもそれ自身では、確立したセッションがハイジャックさ
+れるかもしれない中間者攻撃(man-in-the-middle attack)(攻撃者
+がトラフィックをみることができ、いずれの端末へも自身のパケッ
+トを送出できることを仮定)への防御は用意していないことに注意
+しておくことが重要である。
+
+   Also, to prevent blind connection/session setup forgery, both TCP
+   implementations supporting SYN-cookies and SCTP implementations rely
+   on a server-known, secret key to protect the HMAC data.  It must be
+   ensured that this key is created subject to the recommendations
+   mentioned in [RFC1750].
+
+さらに、ブラインド状態からのコネクションやセッションの確立の
+偽造を防ぐために、SYNクッキーをサポートするTCP実装およびSCTP
+実装のいずれも、HMACデータを保護するためにサーバが既知の秘密
+鍵に頼ることになる。この鍵は[RFC1750]で述べられている推奨に
+沿って作られていることを確認すべきである。
+
+   Although SCTP has been designed carefully as to avoid some of the
+   problems that have appeared with TCP, it has as of yet not been
+   widely deployed.  It is therefore possible that new security issues
+   will be identified that will have to be addressed in further
+   revisions of [RFC2960].
+
+SCTPはTCPを用いたときに出現した問題のうちいくつかを回避する
+ように慎重に設計されてきたが、まだ広くは導入されていない。そ
+れゆえ[RFC2960]の以降の版で述べる必要が出てくるであろう新し
+いセキュリティ課題が認められる可能性がある。
+
+
+
+
+Coene                        Informational                      [Page 8]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+6 References and related work
+参考文献と関連活動
+
+   [RFC2960]   Stewart, R., Xie, Q., Morneault, K., Sharp, C.,
+               Schwarzbauer, H., Taylor, T., Rytina, I., Kalla, M.,
+               Zhang, L. and V. Paxson, "Stream Control Transmission
+               Protocol", RFC 2960, October 2000.
+
+   [RFC2401]   Kent, S. and R. Atkinson, "Security Architecture for the
+               Internet Protocol", RFC 2401, November 1998.
+
+   [RFC2663]   Srisuresh, P. and M. Holdrege, "IP Network Address
+               Translator (NAT) Terminology and Considerations", RFC
+               2663, August 1999.
+
+   [RFC2694]   Srisuresh, P., Tsirtsis, G., Akkiraju, P. and A.
+               Heffernan, "DNS extensions to Network Address Translators
+               (DNS_ALG)", RFC 2694, September 1999.
+
+   [RFC768]    Postel, J., "User Datagram Protocol", STD 6, RFC 768,
+               August 1980.
+
+   [RFC793]    Postel, J., "Transmission Control Protocol", STD 7, RFC
+               793, September 1981.
+
+   [RFC2719]   Ong, L., Rytina, I., Garcia, M., Schwarzbauer, H., Coene,
+               L., Lin, H., Juhasz, I., Holdrege, M. and C. Sharp,
+               "Architectural Framework for Signaling Transport", RFC
+               2719, October 1999.
+
+   [RFC1321]   Rivest, R., "The MD5 Message-Digest Algorithm", RFC 1321,
+               April 1992.
+
+   [RFC1323]   Jacobson, V., Braden, R. and D. Borman, "TCP Extensions
+               for High Performance", RFC 1323, May 1992.
+
+   [RFC1750]   Eastlake, D., Crocker, S. and J. Schiller, "Randomness
+               Recommendations for Security", RFC 1750, December 1994.
+
+   [SHA1]      NIST FIPS PUB 180-1, "Secure Hash Standard," National
+               Institute of Standards and Technology, U.S. Department of
+               Commerce, April 1995.
+
+   [SYNCOOK]   Dan J. Bernstein, SYN cookies, 1997, see also
+               <http://cr.yp.to/syncookies.html>
+
+   [RFC2246]   Dierks, T. and C. Allen, "The TLS Protocol Version 1.0",
+               RFC 2246, January 1999.
+
+
+
+
+Coene                        Informational                      [Page 9]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+   [RFC1889]   Schulzrinne, H., Casner, S., Frederick, R. and V.
+               Jacobson, "RTP: A Transport Protocol for Real-Time
+               Applications", RFC 1889, January 1996.
+
+7 Acknowledgments
+謝辞
+
+   This document was initially developed by a design team consisting of
+   Lode Coene, John Loughney, Michel Tuexen, Randall R. Stewart,
+   Qiaobing Xie, Matt Holdrege, Maria-Carmen Belinchon, Andreas
+   Jungmaier, Gery Verwimp and Lyndon Ong.
+
+この文書はLode Coene, John Loughney, Michel Tuexen, Randall
+R. Stewart, Qiaobing Xie, Matt Holdrege, Maria-Carmen
+Belinchon, Andreas Jungmaier, Gery VerwimpおよびLyndon Ongか
+ら構成される設計チームにより最初に書かれたものである。
+
+   The authors wish to thank Renee Revis, I. Rytina, H.J. Schwarzbauer,
+   J.P. Martin-Flatin, T. Taylor, G. Sidebottom, K. Morneault, T.
+   George, M. Stillman, N. Makinae, S. Bradner, A. Mankin, G. Camarillo,
+   H. Schulzrinne, R. Kantola, J. Rosenberg, R.J. Atkinson, and many
+   others for their invaluable comments.
+
+著者らはRenee Revis, I. Rytina, H.J. Schwarzbauer,
+J.P. Martin-Flatin, T. Taylor, G. Sidebottom, K. Morneault,
+T.  George, M. Stillman, N. Makinae, S. Bradner, A. Mankin,
+G. Camarillo, H. Schulzrinne, R. Kantola, J. Rosenberg, R.J. 
+Atkinson, およびその他多くの人々に貴重なコメントをいただいた
+ことに感謝する。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Coene                        Informational                     [Page 10]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+Appendix A: Major functions provided by SCTP
+SCTPが提供する主要な機能
+
+   - Reliable Data Transfer
+- 信頼性のあるデータ転送
+
+   - Multiple streams to help avoid head-of-line blocking
+- head-of-lineブロッキングを避けるのに役立つ複数ストリーム
+
+   - Ordered and unordered data delivery on a per-stream basis
+- ストリームごとに分けられる順序通りおよび順序通りでないデータ転送
+
+   - Bundling and fragmentation of user data
+- ユーザデータのバンドリング(結合)およびフラグメンテーション(分割)
+
+   - TCP friendly Congestion and flow control
+- TCPに親和的な輻輳およびフローの制御
+
+   - Support continuous monitoring of reachability
+- 到達性の継続的なモニタのサポート
+
+   - Graceful termination of association
+- アソシエーションの優美な終了
+
+   - Support of multi-homing for added reliability
+- 信頼性を増加させるためのマルチホームのサポート
+
+   - Some protection against blind denial-of-service attacks
+- ブラインドサービス不能(DoS)攻撃へのいくらかの防御
+
+   - Some protection against blind masquerade attacks
+- ブラインドマスカレード攻撃へのいくらかの防御
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Coene                        Informational                     [Page 11]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+8  Editor's Address
+編者の連絡先
+
+   Lode Coene
+   Siemens Atea
+   Atealaan 34
+   B-2200 Herentals
+   Belgium
+
+   Phone: +32-14-252081
+   EMail: lode.coene@siemens.atea.be
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Coene                        Informational                     [Page 12]
+
+RFC 3257              SCTP Applicability Statement            April 2002
+
+
+9.  Full Copyright Statement
+著作権の完全な記述
+(訳注: 原文のみが有効ですので注意してください。)
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+上記の著作権表示とこの段落がコピーや派生物に含まれている限り、
+全部であれ一部であれ、どんな形の制限もなく、この文書およびそ
+の翻訳はコピーされ他の人々に供給してもよいものとし、これにつ
+いてのコメント、あるいは説明、またはその実装の援助といった派
+生物も用意され、コピーされ、公開され分配されてもよい。しかし
+ながら、この文書そのものは、インターネット標準プロセスで定義
+された著作権処理に従わなければならないインターネット標準の開
+発のために必要な場合、あるいは英語以外の言語に翻訳する際に必
+要な場合を除き、著作権表示やInternet Societyや他のインターネッ
+ト機構への参照を削除したりというように、どんな形であれ改変し
+てはならない。
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+上記で認められた制限つき許可は永続するものであり、Internet
+Society、またはその後継、あるいは譲り受けの団体によって取り
+消されることはないであろう。
+
+   This document and the information contained herein is provided on an
+   "AS IS" basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+この文書およびここに含まれる情報は基本的にそのままの("AS
+IS")状態で提供され、「The Internet Society、およびInternet
+Engineering Task Forceは、明示しているか暗示しているかに関わ
+らず一切の保証を放棄する。この保証にはここにある情報を用いる
+ことで特定の目的のために商品性や適応性に関するどんな権利もど
+んな暗示的な保証も侵害しないというような保証を含むがそれに限
+らない。」
+
+Acknowledgement
+謝辞
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+RFC編集機構への資金提供は現在、Internet Societyによる。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Coene                        Informational                     [Page 13]
+

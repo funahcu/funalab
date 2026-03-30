@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <title>terminology</title>
+  <link rel="stylesheet" href="funalab.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+<dl>
+<dt>association</dt>
+<dd>アソシエーション。</dd>
+
+<dt>chunk type</dt>
+<dd>チャンク型。チャンクの区別をつけるための数字。</dd>
+
+<dt>SCTP endpoint</dt>
+<dd>SCTP端末。端点でもいいのかな。</dd>
+
+<dt>data sender</dt>
+<dd>データ送信者。あるデータについてデータを送信する側のSCTP端末。</dd>
+
+<dt>data receiver</dt>
+<dd>データ受信者。あるデータについてデータを受信する側のSCTP端末。</dd>
+
+<dt>ULP (Upper Layer Protocol)</dt>
+<dd>上位層プロトコル</dd>
+
+<dt>primitive</dt>
+<dd>基本要素。プリミティブ。RFC2960の10章では抽象関数の形で扱われている。</dt>
+
+<dt>stream sequence number</dt>
+<dd>ストリームシーケンス番号。各ストリームでながれるデータチャンクのそれぞれにつけられる通し番号。</dd>
+     
+<dt>operational error</dt>
+<dd>操作エラー。処理中に解釈できないチャンクに出合った場合など。RFC2960の3.3.10節参照。</dd>
+     
+<dt>fast retransmit</dt>
+<dd>高速再送(RFC2960J、RFC3758J)、早期再送(RFC4460J) ... あとで統一</dd>
+
+<dt>Gap Ack Block</dt>
+<dd>ギャップAckブロック(RFC2960JではGap Ack Blockのまま)。シーケンス番号であるTSNが歯ぬけの状態でところどころ未到達の場合、部分的に順序通り届いている番号の先頭と最後を組にして、確認応答するためのもの。</dd>
+
+<dt>Cumulative TSN Ack</dt>
+<dd>累積TSN確認応答。TSNは順序通り届けるべきでありそれを確認するため、最初からどこまでなら順序通りに届いているかを示す。この番号より大きなTSNをもったブロックは歯ぬけの状態で届いているか全く届いていないかである。</dd>
+
+<dt>bundle</dt>
+<dd>バンドル。ひとつのIPパケットの中に複数のチャンクを入れること。バンドリングとも。</dd>
+     
+<dt>verification tag</dt>
+<dd>認証タグ。</dd>
+     
+<dt>initiate tag</dt>
+<dd>初期化タグ。</dd>
+
+<dt>silently discard</dt>
+<dd>静かに破棄する。特にメッセージなどは送出しない。</dd>
+     
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+</dl>          <dl>
+<dt>association</dt>
+<dd>アソシエーション。</dd>
+
+<dt>chunk type</dt>
+<dd>チャンク型。チャンクの区別をつけるための数字。</dd>
+
+<dt>SCTP endpoint</dt>
+<dd>SCTP端末。端点でもいいのかな。</dd>
+
+<dt>data sender</dt>
+<dd>データ送信者。あるデータについてデータを送信する側のSCTP端末。</dd>
+
+<dt>data receiver</dt>
+<dd>データ受信者。あるデータについてデータを受信する側のSCTP端末。</dd>
+
+<dt>ULP (Upper Layer Protocol)</dt>
+<dd>上位層プロトコル</dd>
+
+<dt>primitive</dt>
+<dd>基本要素。プリミティブ。RFC2960の10章では抽象関数の形で扱われている。</dt>
+
+<dt>stream sequence number</dt>
+<dd>ストリームシーケンス番号。各ストリームでながれるデータチャンクのそれぞれにつけられる通し番号。</dd>
+     
+<dt>operational error</dt>
+<dd>操作エラー。処理中に解釈できないチャンクに出合った場合など。RFC2960の3.3.10節参照。</dd>
+     
+<dt>fast retransmit</dt>
+<dd>高速再送(RFC2960J、RFC3758J)、早期再送(RFC4460J) ... あとで統一</dd>
+
+<dt>Gap Ack Block</dt>
+<dd>ギャップAckブロック(RFC2960JではGap Ack Blockのまま)。シーケンス番号であるTSNが歯ぬけの状態でところどころ未到達の場合、部分的に順序通り届いている番号の先頭と最後を組にして、確認応答するためのもの。</dd>
+
+<dt>Cumulative TSN Ack</dt>
+<dd>累積TSN確認応答。TSNは順序通り届けるべきでありそれを確認するため、最初からどこまでなら順序通りに届いているかを示す。この番号より大きなTSNをもったブロックは歯ぬけの状態で届いているか全く届いていないかである。</dd>
+
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+<dt></dt>
+<dd></dd>
+</dl>          
+
+</body>
+</html>
+
