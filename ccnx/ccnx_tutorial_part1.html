@@ -58,12 +58,13 @@
 <pre><code>
 sudo apt install libssl-dev
 sudo apt install automake
+# 必要があれば gcc, make などもインストール
 cd $CEFORE  # ceforeを展開したディレクトリ
 # ※0.10.0gを導入するには以下のcheckoutを実行してから次に進みます
 # （git checkout 0.10.0g）
 autoconf
 automake
-./configure
+./configure --enable-cache
 make
 sudo make install
 sudo ldconfig</code></pre>
